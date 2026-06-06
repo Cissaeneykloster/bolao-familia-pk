@@ -273,8 +273,48 @@ export function RegulamentoScreen() {
         />
       </Secao>
 
+      {/* Previsão dos grupos */}
+      <Secao titulo="7. Previsão dos Grupos (Pré-Copa)">
+        <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>
+          <strong>Antes de apostar em qualquer jogo</strong>, cada participante deve prever quais 2 seleções se classificam em cada um dos 12 grupos (A a L). Não importa a ordem — só importa acertar quem passa.
+        </p>
+
+        <div>
+          <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>
+            📋 Regras:
+          </p>
+          {[
+            "Preencha 1º e 2º classificado dos 12 grupos",
+            "Clique 'Salvar e Travar Previsões' — após salvar, não pode mais alterar",
+            "Se não salvar, trava automaticamente no início do 1º jogo (11/Jun 16h BRT)",
+            "Só depois de salvar, os palpites dos jogos são liberados",
+          ].map((item, i) => (
+            <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: "var(--text)", marginBottom: 4 }}>
+              <span style={{ color: "var(--neon)", flexShrink: 0 }}>{i + 1}.</span>
+              <span>{item}</span>
+            </div>
+          ))}
+        </div>
+
+        <Tabela rows={[
+          ["Por classificado acertado", "10 pts"],
+          ["Máximo (24 classificados × 10)", "240 pts"],
+          ["Posição não importa", "1º ou 2º = tanto faz"],
+        ]} />
+
+        <Exemplo
+          titulo="Grupo C (Brasil, Marrocos, Haiti, Escócia)"
+          linhas={[
+            { icon: "📋", texto: "Você previu: Brasil e Marrocos" },
+            { icon: "✅", texto: "Brasil classificou", pts: "+10 pts" },
+            { icon: "✅", texto: "Marrocos classificou", pts: "+10 pts" },
+            { icon: "⚽", texto: "Total do Grupo C", pts: "+20 pts" },
+          ]}
+        />
+      </Secao>
+
       {/* Prazo */}
-      <Secao titulo="7. Prazo para Palpites">
+      <Secao titulo="8. Prazo para Palpites dos Jogos">
         <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>
           Os palpites ficam abertos até <strong style={{ color: "var(--warn)" }}>5 minutos após o início</strong> de cada jogo.
           Após esse prazo, não é possível fazer ou alterar palpites para aquela partida.

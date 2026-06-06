@@ -5,6 +5,60 @@
 import type { Match, GroupTeam, Group } from "./types";
 import { mScore } from "./scoring";
 
+/** Timestamp do kickoff do primeiro jogo da Copa (trava das previsões) */
+export const COPA_FIRST_KICKOFF_MS = new Date("2026-06-11T19:00:00Z").getTime(); // 11/Jun 16h BRT = 19h UTC
+
+/** Verifica se as previsões dos grupos estão travadas */
+export function arePredictionsLocked(saved: boolean, now = Date.now()): boolean {
+  return saved || now >= COPA_FIRST_KICKOFF_MS;
+}
+
+/** Pontos ganhos com as previsões de grupos (10 pts por classificado acertado) */
+export function calcGroupPredictionPts(
+  predictions: Record<string, { first: string; second: string }>,
+  groups: Group[],
+  allMatches: Match[],
+  resultFix: Record<string, { sa: number; sb: number }>
+): { total: number; details: { group: string; pts: number; acertos: string[] }[] } {
+  const details: { group: string; pts: number; acertos: string[] }[] = [];
+  let total = 0;
+
+  for (const group of groups) {
+    const pred = predictions[group.name];
+    if (!pred) {
+      details.push({ group: group.name, pts: 0, acertos: [] });
+      continue;
+    }
+
+    // Verifica se já há jogos suficientes encerrados (todas as rodadas do grupo)
+    const groupMatches = allMatches.filter(
+      (m) => m.group === group.name && m.phase === "grupos"
+    );
+    const encerrados = groupMatches.filter((m) => m.status === "finished").length;
+
+    // Só calcula se ao menos 1 jogo foi encerrado
+    if (encerrados === 0) {
+      details.push({ group: group.name, pts: 0, acertos: [] });
+      continue;
+    }
+
+    const standings = calcGroupStandings(group, allMatches, resultFix);
+    const classifiedNames = standings.slice(0, 2).map((t) => t.name);
+
+    const acertos: string[] = [];
+    if (classifiedNames.includes(pred.first)) acertos.push(pred.first);
+    if (classifiedNames.includes(pred.second) && pred.second !== pred.first) {
+      acertos.push(pred.second);
+    }
+
+    const pts = acertos.length * 10;
+    total += pts;
+    details.push({ group: group.name, pts, acertos });
+  }
+
+  return { total, details };
+}
+
 export function calcGroupStandings(
   group: Group,
   allMatches: Match[],

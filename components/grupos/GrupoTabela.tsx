@@ -1,10 +1,51 @@
 "use client";
 
 import { useState } from "react";
-import type { Group } from "@/lib/types";
+import type { Group, GroupTeam } from "@/lib/types";
 import { useBolao } from "@/lib/store";
 import { MATCHES } from "@/lib/mock-data";
 import { calcGroupStandings } from "@/lib/standings";
+
+// ── Sub-componente: sua previsão de classificação ──────────────────
+function SuaPrevisao({ groupName, standings }: { groupName: string; standings: GroupTeam[] }) {
+  const { groupPredictions, groupPredictionsSaved } = useBolao();
+  const pred = groupPredictions[groupName];
+  if (!pred?.first && !pred?.second) return null;
+
+  const classified = standings.slice(0, 2).map((t) => t.name);
+  const jogosEncerrados = standings.some((t) => t.j > 0);
+
+  return (
+    <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10 }}>
+      <p style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
+        Sua previsão de classificação
+      </p>
+      {[
+        { label: "🥇 1º", name: pred.first },
+        { label: "🥈 2º", name: pred.second },
+      ].map(({ label, name }) => {
+        const acertou = jogosEncerrados && classified.includes(name);
+        const errou = jogosEncerrados && !classified.includes(name) && classified.length === 2;
+        return (
+          <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, marginBottom: 4 }}>
+            <span style={{ color: "var(--text)" }}>{label} — {name || "—"}</span>
+            {acertou
+              ? <span style={{ color: "var(--ok)", fontWeight: 700 }}>✅ +10 pts</span>
+              : errou
+              ? <span style={{ color: "var(--danger)" }}>❌ +0</span>
+              : <span style={{ color: "var(--muted)" }}>⏳ em aberto</span>
+            }
+          </div>
+        );
+      })}
+      {!groupPredictionsSaved && (
+        <p style={{ fontSize: 11, color: "var(--warn)", marginTop: 4, fontStyle: "italic" }}>
+          ⚠️ Previsão ainda não travada — vá em Palpites para salvar.
+        </p>
+      )}
+    </div>
+  );
+}
 
 interface GrupoTabelaProps {
   group: Group;
@@ -144,35 +185,8 @@ export function GrupoTabela({ group }: GrupoTabelaProps) {
             </div>
           )}
 
-          {/* Palpite de classificação */}
-          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-            <p style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
-              Seu palpite de classificação
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
-                <span style={{ color: "var(--text)" }}>
-                  🥇 1º — {group.pred.first}
-                </span>
-                {group.predResult === "ok"
-                  ? <span style={{ color: "var(--ok)", fontWeight: 700 }}>✅ +15 pts</span>
-                  : <span style={{ color: "var(--muted)" }}>⏳ em aberto</span>
-                }
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
-                <span style={{ color: "var(--text)" }}>
-                  🥈 2º — {group.pred.second}
-                </span>
-                {group.predResult === "ok"
-                  ? <span style={{ color: "var(--ok)", fontWeight: 700 }}>✅ +10 pts</span>
-                  : <span style={{ color: "var(--muted)" }}>⏳ em aberto</span>
-                }
-              </div>
-            </div>
-            <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 6, fontStyle: "italic" }}>
-              {group.pred.first} e {group.pred.second} classificam
-            </p>
-          </div>
+          {/* Sua previsão (lida do store) */}
+          <SuaPrevisao groupName={group.name} standings={standings} />
         </div>
       </div>
     </div>

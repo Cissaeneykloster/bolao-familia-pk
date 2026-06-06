@@ -1,11 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { setViewport } from "@/tests/setup";
 import { GrupoTabela } from "@/components/grupos/GrupoTabela";
 import { GROUPS } from "@/lib/mock-data";
+import { useBolao } from "@/lib/store";
 
 const grupoA = GROUPS[0];
+
+beforeEach(() => {
+  useBolao.setState({ groupPredictions: {}, groupPredictionsSaved: false, resultFix: {} });
+});
 
 describe("GrupoTabela", () => {
   it("renderiza o nome do grupo", () => {
@@ -20,13 +25,14 @@ describe("GrupoTabela", () => {
     expect(screen.getByText("África do Sul")).toBeInTheDocument();
   });
 
-  it("expande ao clicar no cabeçalho e mostra 'classificam'", async () => {
+  it("expande ao clicar no cabeçalho e mostra jogos", async () => {
     const user = userEvent.setup();
     render(<GrupoTabela group={grupoA} />);
     const btn = screen.getByRole("button", { name: /grupo a/i });
     await user.click(btn);
     expect(btn.getAttribute("aria-expanded")).toBe("true");
-    expect(screen.getByText(/classificam/i)).toBeInTheDocument();
+    // Mostra os jogos do grupo
+    expect(screen.getByText(/México × África do Sul/i)).toBeInTheDocument();
   });
 
   it("colapsa ao clicar novamente", async () => {
@@ -38,19 +44,25 @@ describe("GrupoTabela", () => {
     expect(btn.getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("palpite de classificação com predResult=wait mostra 'em aberto'", async () => {
+  it("seção de previsão não aparece sem previsão salva", async () => {
+    useBolao.setState({ groupPredictions: {}, groupPredictionsSaved: false });
     const user = userEvent.setup();
     render(<GrupoTabela group={grupoA} />);
     await user.click(screen.getByRole("button", { name: /grupo a/i }));
-    // Todos os grupos começam com predResult="wait"
-    expect(screen.getAllByText(/em aberto/i).length).toBeGreaterThan(0);
+    // Sem previsão, o componente SuaPrevisao retorna null
+    expect(screen.queryByText(/sua previsão/i)).not.toBeInTheDocument();
   });
 
-  it("palpite de grupo B (wait) mostra 'em aberto'", async () => {
+  it("seção de previsão aparece quando há previsão para o grupo", async () => {
+    useBolao.setState({
+      groupPredictions: { "Grupo A": { first: "México", second: "Coreia do Sul" } },
+      groupPredictionsSaved: true,
+    });
     const user = userEvent.setup();
-    render(<GrupoTabela group={GROUPS[1]} />);
-    await user.click(screen.getByRole("button", { name: /grupo b/i }));
-    expect(screen.getAllByText(/em aberto/i).length).toBeGreaterThan(0);
+    render(<GrupoTabela group={grupoA} />);
+    await user.click(screen.getByRole("button", { name: /grupo a/i }));
+    expect(screen.getByText(/sua previsão/i)).toBeInTheDocument();
+    expect(screen.getByText("México")).toBeInTheDocument();
   });
 
   it("colunas E e D aparecem no HTML (visibilidade controlada por CSS)", () => {

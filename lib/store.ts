@@ -29,6 +29,11 @@ interface BolaoState {
   // Feed (gerado automaticamente + anúncios do admin)
   feedEvents: FeedEvent[];
 
+  // Previsão dos grupos (pré-Copa) — trava ao salvar ou no kickoff do 1º jogo
+  groupPredictions: Record<string, { first: string; second: string }>;
+  groupPredictionsSaved: boolean;   // true = travado para sempre
+  groupPredictionsSavedAt: number | null;
+
   // Jogo
   guesses: Record<string, { a: number; b: number }>;
   draw: Draw | null;                    // desafio do dia atual
@@ -65,6 +70,10 @@ interface BolaoState {
 
   setGuess: (id: string, side: "a" | "b", dir: 1 | -1) => void;
   saveGuess: (id: string) => void;
+
+  // Previsão dos grupos
+  setGroupPrediction: (group: string, first: string, second: string) => void;
+  saveGroupPredictions: () => void;
 
   // Feed
   addFeedEvent: (event: Omit<FeedEvent, "id" | "timestamp">) => void;
@@ -109,6 +118,9 @@ const initialState = {
   currentGrupoId: null as string | null,
 
   feedEvents: [],
+  groupPredictions: {},
+  groupPredictionsSaved: false,
+  groupPredictionsSavedAt: null,
   guesses: {},
   draw: null,
   challengeHistory: [],
@@ -162,6 +174,20 @@ export const useBolao = create<BolaoState>()(
           if (next[id]) { delete next[id]; } else { next[id] = true; }
           return { desafios: next };
         }),
+
+      setGroupPrediction: (group, first, second) =>
+        set((s) => {
+          if (s.groupPredictionsSaved) return {}; // já travado
+          return {
+            groupPredictions: { ...s.groupPredictions, [group]: { first, second } },
+          };
+        }),
+
+      saveGroupPredictions: () =>
+        set(() => ({
+          groupPredictionsSaved: true,
+          groupPredictionsSavedAt: Date.now(),
+        })),
 
       addFeedEvent: (event) =>
         set((s) => ({
