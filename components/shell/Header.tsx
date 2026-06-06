@@ -77,21 +77,48 @@ export function Header() {
         </span>
       )}
 
-      {/* Identidade do usuário + grupo */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
+      {/* Identidade — avatar + nome */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         {currentUserApelido && (
-          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
-            {currentUserApelido}
-          </span>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>
+              {currentUserApelido}
+            </div>
+            {grupoCfg && (
+              <div style={{ fontSize: 10, color: "var(--neon)", lineHeight: 1.4 }}>
+                {grupoCfg.emoji} {grupoCfg.nomeGrupo}
+              </div>
+            )}
+          </div>
         )}
-        {grupoCfg ? (
-          <span style={{ fontSize: 11, color: "var(--neon)" }}>
-            {grupoCfg.emoji} {grupoCfg.nomeGrupo}
-          </span>
+
+        {/* Avatar circular com iniciais */}
+        {currentUserApelido ? (
+          <div
+            aria-label={`Você: ${currentUserApelido}`}
+            style={{
+              width: 36, height: 36, borderRadius: "50%",
+              background: "var(--field)",
+              border: "2px solid var(--neon)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 13, fontWeight: 700, color: "var(--neon)",
+              flexShrink: 0,
+            }}
+          >
+            {currentUserApelido.slice(0, 2).toUpperCase()}
+          </div>
         ) : (
-          <span style={{ fontSize: 11, color: "var(--muted)", fontStyle: "italic" }}>
-            Sem grupo
-          </span>
+          <div style={{ textAlign: "right" }}>
+            {grupoCfg ? (
+              <span style={{ fontSize: 11, color: "var(--neon)" }}>
+                {grupoCfg.emoji} {grupoCfg.nomeGrupo}
+              </span>
+            ) : (
+              <span style={{ fontSize: 11, color: "var(--muted)", fontStyle: "italic" }}>
+                Sem grupo
+              </span>
+            )}
+          </div>
         )}
       </div>
     </header>

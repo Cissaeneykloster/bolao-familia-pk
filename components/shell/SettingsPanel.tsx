@@ -36,7 +36,7 @@ const STYLE_OPTIONS: {
 ];
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
-  const { theme, podium, card, palpite, sound, live, setStyle, setTheme, toggleSound, toggleLive, currentGrupoId, setCurrentGrupo } = useBolao();
+  const { theme, podium, card, palpite, sound, live, setStyle, setTheme, toggleSound, toggleLive, currentGrupoId, setCurrentGrupo, currentUserApelido } = useBolao();
   const [showAdminGate, setShowAdminGate] = useState(false);
   const grupoCfg = ADMINS.find((a) => a.id === currentGrupoId);
 
@@ -83,6 +83,63 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           >
             ✕
           </button>
+        </div>
+
+        {/* ── Sua Identidade ── */}
+        <div style={{
+          padding: "14px 16px", borderRadius: 12,
+          background: currentUserApelido
+            ? "rgba(0,255,135,0.07)"
+            : "rgba(255,216,77,0.07)",
+          border: `1px solid ${currentUserApelido ? "rgba(0,255,135,0.25)" : "rgba(255,216,77,0.3)"}`,
+          display: "flex", flexDirection: "column", gap: 10,
+        }}>
+          {currentUserApelido ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                {/* Avatar */}
+                <div style={{
+                  width: 44, height: 44, borderRadius: "50%",
+                  background: "var(--field)", border: "2px solid var(--neon)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 16, fontWeight: 700, color: "var(--neon)",
+                  flexShrink: 0,
+                }}>
+                  {currentUserApelido.slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <p style={{ fontSize: 11, color: "var(--muted)", margin: "0 0 2px" }}>
+                    Esta é a sua página
+                  </p>
+                  <p style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", margin: 0 }}>
+                    {currentUserApelido}
+                  </p>
+                  {grupoCfg && (
+                    <p style={{ fontSize: 11, color: "var(--neon)", margin: "2px 0 0" }}>
+                      {grupoCfg.emoji} {grupoCfg.nomeGrupo}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <p style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.5, margin: 0 }}>
+                💡 Se trocar de celular ou navegador, clique novamente no link que recebeu no WhatsApp para se identificar.
+              </p>
+            </>
+          ) : (
+            <>
+              <p style={{ fontSize: 13, fontWeight: 700, color: "var(--warn)", margin: 0 }}>
+                ⚠️ Você ainda não está identificado
+              </p>
+              <p style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5, margin: 0 }}>
+                Clique no link que o organizador enviou pelo WhatsApp para que o app saiba quem é você.
+              </p>
+              {grupoCfg && (
+                <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>
+                  Grupo atual: {grupoCfg.emoji} {grupoCfg.nomeGrupo}
+                </p>
+              )}
+            </>
+          )}
         </div>
 
         {/* Tema */}
