@@ -330,6 +330,9 @@ function TabParticipantes() {
   const [form, setForm] = useState({ nome: "", apelido: "", email: "", telefone: "" });
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [novoLink, setNovoLink] = useState<{ nome: string; link: string } | null>(null);
+  const [importText, setImportText] = useState("");
+  const [showImport, setShowImport] = useState(false);
+  const [importados, setImportados] = useState(0);
 
   // Considera "sem grupo" tanto null, undefined, quanto string vazia
   const semGrupoId = (p: { grupoId?: string | null }) => !p.grupoId || p.grupoId === "";
@@ -340,6 +343,36 @@ function TabParticipantes() {
   // Participantes antigos que precisam ser migrados (sem grupoId)
   const semGrupo = participantes.filter((p) => semGrupoId(p));
   const adminCfg = ADMINS.find((a) => a.id === adminGrupoId);
+
+  // Importa participantes a partir de links ou apelidos (um por linha)
+  const handleImport = () => {
+    if (!adminGrupoId) return;
+    const linhas = importText.split("\n").map((l) => l.trim()).filter(Boolean);
+    let count = 0;
+    for (const linha of linhas) {
+      // Extrai apelido de um link ?p=Apelido ou usa a linha inteira como apelido
+      let apelido = linha;
+      try {
+        const url = new URL(linha);
+        const p = url.searchParams.get("p");
+        if (p) apelido = decodeURIComponent(p);
+      } catch { /* não é URL, usa texto direto */ }
+      apelido = apelido.trim();
+      if (!apelido) continue;
+      // Verifica se já existe
+      const existe = participantes.some(
+        (p) => p.apelido.toLowerCase() === apelido.toLowerCase() &&
+               (p.grupoId === adminGrupoId || !p.grupoId)
+      );
+      if (!existe) {
+        addParticipante({ nome: apelido, apelido, email: "", telefone: "", grupoId: adminGrupoId });
+        count++;
+      }
+    }
+    setImportados(count);
+    setImportText("");
+    setTimeout(() => { setImportados(0); setShowImport(false); }, 3000);
+  };
 
   const handleAdd = () => {
     if (!form.nome || !form.apelido || !adminGrupoId) return;
@@ -407,6 +440,66 @@ function TabParticipantes() {
           <span style={{ fontSize: 18 }}>{adminCfg.emoji}</span>
           <span style={{ fontSize: 13, fontWeight: 700, color: "var(--neon)" }}>{adminCfg.nomeGrupo}</span>
           <span style={{ fontSize: 12, color: "var(--muted)", marginLeft: "auto" }}>{meusPart.length} cadastrado{meusPart.length !== 1 ? "s" : ""}</span>
+        </div>
+      )}
+
+      {/* Importação rápida por links */}
+      {!showImport ? (
+        <button
+          onClick={() => setShowImport(true)}
+          style={{
+            padding: "8px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+            border: "1px solid var(--border)", background: "transparent",
+            color: "var(--muted)", cursor: "pointer", width: "100%",
+          }}
+        >
+          📋 Importar pelo link (recuperar cadastros perdidos)
+        </button>
+      ) : (
+        <div style={{ background: "var(--bg-2)", borderRadius: "var(--radius)", border: "1px solid var(--border)", padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", margin: 0 }}>
+            📋 Importar participantes
+          </p>
+          <p style={{ fontSize: 12, color: "var(--muted)", margin: 0, lineHeight: 1.5 }}>
+            Cole os links de acesso abaixo (um por linha). O sistema extrai o nome automaticamente.
+          </p>
+          <textarea
+            value={importText}
+            onChange={(e) => setImportText(e.target.value)}
+            placeholder={`https://bolao-familia-pk.vercel.app/entrar/pk?p=Jecy\nhttps://bolao-familia-pk.vercel.app/entrar/pk?p=Tia+Ve\n...\n\nOu só os apelidos:\nJecy\nTia Ve\nNey`}
+            style={{
+              width: "100%", padding: "10px 12px", borderRadius: 8, fontSize: 12,
+              border: "1px solid var(--border)", background: "var(--bg-2)",
+              color: "var(--text)", resize: "vertical", minHeight: 140,
+              fontFamily: "monospace",
+            }}
+          />
+          {importados > 0 && (
+            <p style={{ fontSize: 13, fontWeight: 700, color: "var(--neon)", margin: 0 }}>
+              ✅ {importados} participante{importados > 1 ? "s" : ""} importado{importados > 1 ? "s" : ""}!
+            </p>
+          )}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => { setShowImport(false); setImportText(""); }}
+              style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer", fontSize: 13 }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleImport}
+              disabled={!importText.trim()}
+              style={{
+                flex: 2, padding: "9px 0", borderRadius: 8, border: "none",
+                background: importText.trim() ? "var(--field)" : "var(--border)",
+                color: importText.trim() ? "var(--neon)" : "var(--muted)",
+                cursor: importText.trim() ? "pointer" : "default",
+                fontWeight: 700, fontSize: 13,
+              }}
+            >
+              ✅ Importar
+            </button>
+          </div>
         </div>
       )}
 
