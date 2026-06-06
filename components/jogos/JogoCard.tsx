@@ -4,6 +4,7 @@ import { useBolao } from "@/lib/store";
 import { mScore, breakdown } from "@/lib/scoring";
 import { useCountdown } from "@/hooks/useCountdown";
 import { EXTRA_MS_AFTER_KICKOFF } from "@/lib/mock-data";
+// Amistosos de treino nunca fecham — usamos um deadline muito distante
 import type { Match } from "@/lib/types";
 
 // ── Breakdown compacto no card ────────────────────────────────────
@@ -33,7 +34,9 @@ function MiniBreakdown({ match, guess }: { match: Match; guess: { a: number; b: 
 // ── Card principal ────────────────────────────────────────────────
 export function JogoCard({ match }: { match: Match }) {
   const { guesses, resultFix, setScreen, card } = useBolao();
-  const countdown = useCountdown(match.kickoff);
+  // Amistosos de treino: deadline = ano 2099 (nunca fecha)
+  const trainingDeadline = match.training ? new Date("2099-01-01").getTime() : undefined;
+  const countdown = useCountdown(match.training ? trainingDeadline : match.kickoff);
   const guess = guesses[match.id];
   const actual = mScore(match, resultFix);
 
@@ -77,7 +80,12 @@ export function JogoCard({ match }: { match: Match }) {
             🔴 AO VIVO {match.minute}&apos;
           </span>
         )}
-        {match.status === "finished" && (
+        {match.training && (
+          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--warn)", background: "rgba(255,216,77,0.15)", padding: "2px 8px", borderRadius: 10 }}>
+            🎯 TREINO
+          </span>
+        )}
+        {!match.training && match.status === "finished" && (
           <span style={{ fontSize: 11, color: "var(--muted)", background: "var(--border)", padding: "2px 8px", borderRadius: 10 }}>
             ENCERRADO
           </span>
@@ -124,24 +132,27 @@ export function JogoCard({ match }: { match: Match }) {
       </div>
 
       {/* Info extra por status */}
-      {match.status === "upcoming" && (
+      {(match.status === "upcoming" || match.training) && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 12, color: "var(--warn)" }}>
-            ⏰ Fecha em {countdown}
-            {match.kickoff && Date.now() >= match.kickoff && (
-              <span style={{ color: "var(--live)", marginLeft: 4 }}>(5 min após o início)</span>
-            )}
-          </span>
+          {match.training ? (
+            <span style={{ fontSize: 12, color: "var(--warn)" }}>
+              🎯 Treino — apostas sempre abertas
+            </span>
+          ) : (
+            <span style={{ fontSize: 12, color: "var(--warn)" }}>
+              ⏰ Fecha em {countdown}
+            </span>
+          )}
           <button
             aria-label={`Apostar agora em ${match.a.name} × ${match.b.name}`}
             onClick={() => setScreen("palpites")}
             style={{
               background: "var(--field)", color: "var(--neon)",
-              border: "1px solid var(--neon)33", borderRadius: 8,
+              border: "1px solid rgba(0,255,135,0.2)", borderRadius: 8,
               padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer",
             }}
           >
-            🎯 Apostar agora
+            🎯 Apostar
           </button>
         </div>
       )}

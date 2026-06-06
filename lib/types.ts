@@ -15,9 +15,12 @@ export interface Team { name: string; flag: string; }
 
 export type MatchStatus = "finished" | "live" | "upcoming";
 
+export type MatchPhase =
+  | "amistoso" | "grupos" | "oitavas" | "quartas" | "semi" | "terceiro" | "final";
+
 export interface Match {
   id: string;
-  phase: "grupos" | "oitavas" | "final";
+  phase: MatchPhase;
   group: string;
   a: Team;
   b: Team;
@@ -25,9 +28,11 @@ export interface Match {
   sa?: number;
   sb?: number;
   minute?: number;
-  kickoff?: number;
+  kickoff?: number;   // timestamp ms (horário de Brasília)
   label?: string;
   guess?: { a: number; b: number };
+  training?: boolean; // amistoso de treino — nunca fecha, não conta ranking
+  rodada?: 1 | 2 | 3; // rodada dentro da fase de grupos
 }
 
 export interface ScoringRule { key: ScoringKey; label: string; pts: number; }
