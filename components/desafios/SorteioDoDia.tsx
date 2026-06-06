@@ -1,326 +1,270 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useBolao } from "@/lib/store";
 import {
-  rollDraw, activeDraw, drawnId,
-  dailyDoneCount, closeDayResult, shouldClaimCombo,
+  rollDailyChallenge, todayVancouver,
+  getChallengeWindow, isWindowOpen, msUntilClose,
+  resolvePendingDraw, challengeCode, AREA_NUMBER,
 } from "@/lib/daily";
-import { DESAFIO_CATS, DAILY_AREAS, AREA_SHORT } from "@/lib/mock-data";
-import { Evidencia } from "./Evidencia";
+import { DESAFIO_CATS } from "@/lib/mock-data";
+import { fmtCountdown } from "@/lib/format";
 import { useToast } from "@/components/shell/Toast";
 import { useConfetti } from "@/components/shell/ConfettiCanvas";
-import type { Area } from "@/lib/types";
 
-const AREAS = DAILY_AREAS as Area[];
-
-// Stakes por área para a tela de intro
-const STAKES: { area: Area; label: string; pts: number }[] = [
-  { area: "quarto",      label: "🛏️ Quarto",        pts: 3 },
-  { area: "servico",     label: "❤️ Serviço",         pts: 5 },
-  { area: "intelectual", label: "📚 Intelectual",     pts: 4 },
-  { area: "saude",       label: "💧 Saúde",           pts: 3 },
-];
-
-// ── Animação caça-níquel ──────────────────────────────────────────
-const SLOT_DURATION_MS = [900, 1200, 1500, 1900]; // escalonado por linha
-
-function useSlotAnimation(onDone: () => void) {
-  const [spinning, setSpinning] = useState(false);
-  const [slots, setSlots] = useState<(string | null)[]>([null, null, null, null]);
-
-  const start = useCallback(() => {
-    setSpinning(true);
-    setSlots([null, null, null, null]);
-
-    AREAS.forEach((area, i) => {
-      const cat = DESAFIO_CATS.find((c) => c.id === area)!;
-      const items = cat.items;
-      let count = 0;
-      const tick = () => {
-        setSlots((prev) => {
-          const next = [...prev];
-          next[i] = items[count % items.length];
-          return next;
-        });
-        count++;
-      };
-
-      // Tick a cada 75ms
-      const interval = setInterval(tick, 75);
-
-      // Para após a duração da linha
-      setTimeout(() => {
-        clearInterval(interval);
-        // Escolhe item aleatório final
-        const finalIdx = Math.floor(Math.random() * items.length);
-        setSlots((prev) => {
-          const next = [...prev];
-          next[i] = items[finalIdx];
-          return next;
-        });
-        // Última linha → termina
-        if (i === AREAS.length - 1) {
-          setTimeout(() => {
-            setSpinning(false);
-            onDone();
-          }, 200);
-        }
-      }, SLOT_DURATION_MS[i]);
-    });
-  }, [onDone]);
-
-  return { spinning, slots, start };
+// ── Countdown ────────────────────────────────────────────────────
+function useWindowCountdown(dateVancouver: string) {
+  const [ms, setMs] = useState(() => msUntilClose(dateVancouver));
+  useEffect(() => {
+    const id = setInterval(() => setMs(msUntilClose(dateVancouver)), 1000);
+    return () => clearInterval(id);
+  }, [dateVancouver]);
+  return ms;
 }
 
-// ── Componente principal ──────────────────────────────────────────
+// ── Componente ───────────────────────────────────────────────────
 export function SorteioDoDia() {
-  const {
-    draw, desafios, drawComboClaimed,
-    setDraw, claimCombo, addPenalty, clearDay,
-  } = useBolao();
-
+  const { draw, setDraw, markChallengeDone, resolveChallenge, challengeHistory, totalChallengePoints } = useBolao();
   const { show } = useToast();
   const { fire } = useConfetti();
 
-  const active = activeDraw(draw);
-  const doneCount = dailyDoneCount(draw, desafios, AREAS);
+  const today = todayVancouver();
+  const windowOpen = draw ? isWindowOpen(draw.dateVancouver) : false;
+  const isToday = draw?.dateVancouver === today;
+  const countdown = useWindowCountdown(draw?.dateVancouver ?? today);
 
-  // ── Dispara quando animação termina ──────────────────────────────
-  const handleSpinDone = useCallback(() => {
-    const newDraw = rollDraw(DESAFIO_CATS, AREAS);
+  // ── Resolve desafio pendente de dia anterior automaticamente ──
+  useEffect(() => {
+    if (!draw) return;
+    const record = resolvePendingDraw(draw, DESAFIO_CATS);
+    if (record) {
+      resolveChallenge(record);
+      if (!record.done) {
+        show(`⏰ Desafio ${record.code} encerrado: ${record.pts} pts`);
+      }
+    }
+  }, [draw, resolveChallenge, show]);
+
+  // ── Sortear desafio do dia ────────────────────────────────────
+  const handleRoll = useCallback(() => {
+    const newDraw = rollDailyChallenge(DESAFIO_CATS);
     setDraw(newDraw);
     fire();
-    show("🎲 Desafios sorteados! Boa sorte!");
+    show("🎲 Desafio do dia sorteado!");
   }, [setDraw, fire, show]);
 
-  const { spinning, slots, start } = useSlotAnimation(handleSpinDone);
+  // ── Marcar como feito ────────────────────────────────────────
+  const handleMark = useCallback((done: boolean) => {
+    if (!draw || !windowOpen) return;
+    markChallengeDone(done);
+    if (done) { fire(); show("✅ Desafio marcado! Pontos garantidos."); }
+    else show("❌ Desmarcado.");
+  }, [draw, windowOpen, markChallengeDone, fire, show]);
 
-  // ── Encerrar o dia ────────────────────────────────────────────────
-  const handleCloseDay = () => {
-    const { lost, missed } = closeDayResult(draw, desafios, AREAS, DESAFIO_CATS);
-    if (lost > 0) {
-      addPenalty(-lost);
-      show(`⏱️ Dia encerrado: −${lost} pts por ${missed} sem evidência`);
-    } else {
-      show("🏅 Dia 100% cumprido!");
-    }
-    clearDay();
-  };
+  // Dados do desafio
+  const cat = draw ? DESAFIO_CATS.find((c) => c.id === draw.area) : null;
+  const itemText = cat ? cat.items[draw!.itemIdx] : "";
+  const code = draw ? challengeCode(draw.area, draw.itemIdx) : "";
 
-  // ── Verificar combo ───────────────────────────────────────────────
-  const handleCombo = useCallback(() => {
-    if (shouldClaimCombo(doneCount, drawComboClaimed)) {
-      claimCombo();
-      fire();
-      show("🔥 COMBO! +10 pts bônus!");
-    }
-  }, [doneCount, drawComboClaimed, claimCombo, fire, show]);
+  // Janela de abertura para hoje
+  const todayWindow = getChallengeWindow(today);
+  const nowMs = Date.now();
+  const beforeOpen = nowMs < todayWindow.open;
 
-  // ── ESTADO 1: Sem sorteio ─────────────────────────────────────────
-  if (!active && !spinning) {
-    return (
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+      {/* ── Cabeçalho com pontos acumulados ── */}
       <div style={{
-        background: "var(--card)", borderRadius: "var(--radius)",
-        border: "1px solid var(--border)", padding: 20,
-        display: "flex", flexDirection: "column", gap: 16,
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        padding: "10px 14px", borderRadius: 10,
+        background: "var(--bg-2)", border: "1px solid var(--border)",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span className="animate-dice" style={{ fontSize: 32, display: "inline-block" }}>🎲</span>
+        <span style={{ fontSize: 13, color: "var(--muted)" }}>🏅 Pontos dos desafios</span>
+        <span className="font-bebas" style={{
+          fontSize: 22,
+          color: totalChallengePoints >= 0 ? "var(--neon)" : "var(--danger)",
+        }}>
+          {totalChallengePoints > 0 ? "+" : ""}{totalChallengePoints} pts
+        </span>
+      </div>
+
+      {/* ── Desafio do dia ── */}
+      {!draw || !isToday ? (
+        /* Sem desafio hoje */
+        <div style={{
+          background: "var(--card)", borderRadius: "var(--radius)",
+          border: "1px solid var(--border)", padding: 20,
+          display: "flex", flexDirection: "column", gap: 14, alignItems: "center",
+          textAlign: "center",
+        }}>
+          <span className="animate-dice" style={{ fontSize: 40, display: "inline-block" }}>🎲</span>
           <div>
-            <h3 className="font-bebas" style={{ fontSize: 22, color: "var(--neon)", lineHeight: 1 }}>
-              Sorteio do Dia
-            </h3>
-            <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-              4 desafios sorteados. Comprove com foto e ganhe pontos.
+            <p className="font-bebas" style={{ fontSize: 20, color: "var(--neon)", margin: 0 }}>
+              Desafio do Dia
+            </p>
+            <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>
+              {beforeOpen
+                ? `Abre às 01h Vancouver (05h Brasília · 09h Lisboa)`
+                : "Clique para sortear o desafio de hoje!"}
             </p>
           </div>
-        </div>
 
-        {/* Stakes */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {STAKES.map((s) => (
-            <span key={s.area} style={{
-              padding: "4px 10px", borderRadius: 20, fontSize: 12,
-              border: "1px solid var(--border)", color: "var(--muted)",
-            }}>
-              {s.label} <strong style={{ color: "var(--warn)" }}>±{s.pts}</strong>
-            </span>
-          ))}
-        </div>
-
-        <button
-          aria-label="Sortear desafios de hoje"
-          onClick={start}
-          style={{
-            padding: "14px 0", borderRadius: "var(--radius)",
-            border: "none", background: "var(--field)",
-            color: "var(--neon)", fontWeight: 700, fontSize: 15,
-            cursor: "pointer", minHeight: 44,
-          }}
-        >
-          🎲 Sortear desafios de hoje
-        </button>
-      </div>
-    );
-  }
-
-  // ── ESTADO 2: Animação rodando ────────────────────────────────────
-  if (spinning) {
-    return (
-      <div style={{
-        background: "var(--card)", borderRadius: "var(--radius)",
-        border: "1px solid var(--neon)", padding: 20,
-        display: "flex", flexDirection: "column", gap: 12,
-      }}>
-        <p className="font-bebas" style={{ fontSize: 20, color: "var(--neon)", textAlign: "center" }}>
-          🎰 Sorteando...
-        </p>
-        {AREAS.map((area, i) => (
-          <div key={area} style={{
-            display: "flex", alignItems: "center", gap: 10,
-            padding: "10px 14px",
-            background: "var(--bg-2)", borderRadius: 8,
-            border: "1px solid var(--border)",
-            minHeight: 44, overflow: "hidden",
-          }}>
-            <span style={{ fontSize: 18, flexShrink: 0 }}>
-              {DESAFIO_CATS.find(c => c.id === area)?.icon}
-            </span>
-            <span
-              className={slots[i] ? "animate-settle" : ""}
+          {!beforeOpen && (
+            <button
+              aria-label="Sortear desafio de hoje"
+              onClick={handleRoll}
               style={{
-                fontSize: 13, color: slots[i] ? "var(--neon)" : "var(--muted)",
-                fontWeight: slots[i] ? 600 : 400,
-                transition: "color 0.1s",
-                flex: 1,
+                padding: "12px 32px", borderRadius: "var(--radius)",
+                border: "none", background: "var(--field)",
+                color: "var(--neon)", fontWeight: 700, fontSize: 14,
+                cursor: "pointer", minHeight: 44,
               }}
             >
-              {slots[i] ?? "..."}
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  }
+              🎲 Sortear desafio de hoje
+            </button>
+          )}
 
-  // ── ESTADO 3: Sorteio ativo ───────────────────────────────────────
-  return (
-    <div style={{
-      background: "var(--card)", borderRadius: "var(--radius)",
-      border: "1px solid var(--border)", padding: 20,
-      display: "flex", flexDirection: "column", gap: 14,
-    }}>
-      {/* Progresso */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h3 className="font-bebas" style={{ fontSize: 20, color: "var(--neon)" }}>
-          🎲 Desafios de Hoje
-        </h3>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          {AREAS.map((_, i) => (
-            <div key={i} style={{
-              width: 10, height: 10, borderRadius: "50%",
-              background: i < doneCount ? "var(--neon)" : "var(--border)",
-              transition: "background 0.3s",
-            }} />
-          ))}
-          <span style={{ fontSize: 13, color: "var(--muted)", marginLeft: 4 }}>
-            {doneCount}/4
-          </span>
+          {/* Horário de referência */}
+          <p style={{ fontSize: 11, color: "var(--muted)" }}>
+            ⏰ Janela: 01h–00h Vancouver · 05h–04h Brasília · 09h–08h Lisboa
+          </p>
         </div>
-      </div>
-
-      {/* Linhas de desafio */}
-      {AREAS.map((area) => {
-        const cat = DESAFIO_CATS.find((c) => c.id === area)!;
-        const id = drawnId(draw, area)!;
-        const itemIdx = draw?.picks[area] ?? 0;
-        const itemText = cat.items[itemIdx] ?? "—";
-        const done = !!desafios[id];
-
-        return (
-          <div key={area} style={{
-            display: "flex", alignItems: "center", gap: 10,
-            padding: "12px 14px",
-            background: done ? "var(--neon-soft)" : "var(--bg-2)",
-            borderRadius: 10,
-            border: `1px solid ${done ? "var(--neon)44" : "var(--border)"}`,
-            transition: "background 0.2s, border-color 0.2s",
-          }}>
-            <span style={{ fontSize: 20, flexShrink: 0 }}>{cat.icon}</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 12, color: "var(--muted)", margin: 0, marginBottom: 2 }}>
-                {AREA_SHORT[area]} · vale {done ? "+" : "±"}{cat.pts} pts
-              </p>
-              <p style={{
-                fontSize: 13, color: done ? "var(--text)" : "var(--text)",
-                margin: 0, fontWeight: 500,
+      ) : (
+        /* Desafio sorteado */
+        <div style={{
+          background: "var(--card)", borderRadius: "var(--radius)",
+          border: `1px solid ${draw.done ? "var(--neon)44" : windowOpen ? "var(--border)" : "rgba(255,90,90,0.3)"}`,
+          padding: 20, display: "flex", flexDirection: "column", gap: 14,
+        }}>
+          {/* Código + categoria */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 28 }}>{cat?.icon}</span>
+              <div>
+                <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>
+                  {cat?.name} — código
+                </p>
+                <p className="font-bebas" style={{ fontSize: 28, color: "var(--gold)", margin: 0, lineHeight: 1 }}>
+                  {code}
+                </p>
+              </div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>vale</p>
+              <p className="font-bebas" style={{
+                fontSize: 22, margin: 0,
+                color: draw.done ? "var(--neon)" : "var(--warn)",
               }}>
-                {itemText}
+                ±{cat?.pts} pts
               </p>
             </div>
-            <Evidencia
-              itemId={id}
-              label={itemText}
-              pts={cat.pts}
-              onDone={handleCombo}
-            />
           </div>
-        );
-      })}
 
-      {/* Banner combo */}
-      {doneCount === 4 && (
-        <div style={{
-          textAlign: "center", padding: "10px 0",
-          background: "linear-gradient(135deg, var(--gold)22, var(--neon)11)",
-          borderRadius: 10, border: "1px solid var(--gold)55",
-        }}>
-          <span className="font-bebas" style={{ fontSize: 20, color: "var(--gold)" }}>
-            🔥 COMBO DO DIA {drawComboClaimed ? "— +10 pts conquistados!" : "— clique para resgatar!"}
-          </span>
-          {!drawComboClaimed && (
-            <div>
+          {/* Descrição */}
+          <p style={{
+            fontSize: 15, fontWeight: 600,
+            color: "var(--text)", margin: 0,
+            padding: "12px 14px", borderRadius: 10,
+            background: "var(--bg-2)",
+          }}>
+            {itemText}
+          </p>
+
+          {/* Countdown ou status */}
+          {windowOpen ? (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 12, color: "var(--warn)" }}>
+                ⏰ Fecha em {fmtCountdown(countdown)}
+                <span style={{ color: "var(--muted)", marginLeft: 6 }}>(meia-noite Vancouver)</span>
+              </span>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                {new Date(todayWindow.close).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })} BRT
+              </span>
+            </div>
+          ) : (
+            <div style={{
+              padding: "8px 12px", borderRadius: 8, fontSize: 12,
+              background: "rgba(255,90,90,0.1)", color: "var(--danger)", fontWeight: 600,
+            }}>
+              🔒 Janela encerrada — desafio bloqueado
+            </div>
+          )}
+
+          {/* Botões marcar */}
+          {windowOpen && (
+            <div style={{ display: "flex", gap: 10 }}>
               <button
-                onClick={() => { claimCombo(); fire(); show("🔥 COMBO! +10 pts bônus!"); }}
+                aria-label="Marcar como feito"
+                onClick={() => handleMark(true)}
                 style={{
-                  marginTop: 8, padding: "8px 20px", borderRadius: 8,
-                  background: "var(--gold)", color: "#000",
-                  border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13,
+                  flex: 1, padding: "12px 0", borderRadius: 10, fontWeight: 700, fontSize: 14,
+                  border: `2px solid ${draw.done ? "var(--neon)" : "var(--border)"}`,
+                  background: draw.done ? "var(--neon-soft)" : "transparent",
+                  color: draw.done ? "var(--neon)" : "var(--muted)",
+                  cursor: "pointer", minHeight: 44,
                 }}
               >
-                Resgatar +10 pts
+                ✅ Fiz!
+              </button>
+              <button
+                aria-label="Marcar como não feito"
+                onClick={() => handleMark(false)}
+                style={{
+                  flex: 1, padding: "12px 0", borderRadius: 10, fontWeight: 700, fontSize: 14,
+                  border: `2px solid ${!draw.done ? "rgba(255,90,90,0.5)" : "var(--border)"}`,
+                  background: !draw.done ? "rgba(255,90,90,0.08)" : "transparent",
+                  color: !draw.done ? "var(--danger)" : "var(--muted)",
+                  cursor: "pointer", minHeight: 44,
+                }}
+              >
+                ❌ Não fiz
               </button>
             </div>
           )}
+
+          {/* Resultado atual */}
+          <div style={{
+            fontSize: 12, color: "var(--muted)", textAlign: "center",
+            padding: "6px 0", borderTop: "1px solid var(--border)",
+          }}>
+            {draw.done
+              ? `✅ Marcado como feito → +${cat?.pts} pts ao encerrar`
+              : `❌ Não marcado → −${cat?.pts} pts ao encerrar`}
+          </div>
         </div>
       )}
 
-      {/* Ações */}
-      <div style={{ display: "flex", gap: 8 }}>
-        <button
-          aria-label="Novo sorteio"
-          onClick={start}
-          style={{
-            flex: 1, padding: "10px 0", borderRadius: 8,
-            border: "1px solid var(--border)", background: "transparent",
-            color: "var(--muted)", cursor: "pointer", fontSize: 13, fontWeight: 600,
-          }}
-        >
-          🎲 Novo sorteio
-        </button>
-        <button
-          aria-label="Encerrar o dia"
-          onClick={handleCloseDay}
-          style={{
-            flex: 1, padding: "10px 0", borderRadius: 8,
-            border: "1px solid var(--warn)55", background: "color-mix(in srgb, var(--warn) 10%, transparent)",
-            color: "var(--warn)", cursor: "pointer", fontSize: 13, fontWeight: 600,
-          }}
-        >
-          ⏱️ Encerrar o dia
-        </button>
-      </div>
+      {/* ── Histórico ── */}
+      {challengeHistory.length > 0 && (
+        <div>
+          <p style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+            Histórico
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {challengeHistory.slice(0, 7).map((r, i) => (
+              <div key={i} style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "8px 12px", borderRadius: 8,
+                background: "var(--bg-2)", border: "1px solid var(--border)",
+              }}>
+                <span style={{ fontSize: 14 }}>{r.done ? "✅" : "❌"}</span>
+                <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700, minWidth: 32 }}>{r.code}</span>
+                <span style={{ fontSize: 12, color: "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {r.descricao}
+                </span>
+                <span style={{
+                  fontSize: 12, fontWeight: 700,
+                  color: r.pts >= 0 ? "var(--neon)" : "var(--danger)",
+                }}>
+                  {r.pts > 0 ? "+" : ""}{r.pts}
+                </span>
+                <span style={{ fontSize: 10, color: "var(--muted)" }}>{r.dateVancouver}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

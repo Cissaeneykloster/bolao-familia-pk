@@ -82,7 +82,21 @@ export interface LockedBet {
   b: number;
 }
 
+/** Desafio diário — 1 sorteio por dia, referência Vancouver (PDT UTC-7) */
 export interface Draw {
-  date: string;
-  picks: Partial<Record<Area, number>>;
+  dateVancouver: string;   // "2026-06-11" no calendário de Vancouver
+  area: Area;
+  itemIdx: number;         // índice no array items[] da categoria
+  done: boolean;           // marcado como feito
+}
+
+/** Histórico de desafios encerrados */
+export interface ChallengeRecord {
+  dateVancouver: string;
+  area: Area;
+  itemIdx: number;
+  code: string;            // ex: "1.4"
+  descricao: string;
+  done: boolean;
+  pts: number;             // positivo se feito, negativo se não
 }

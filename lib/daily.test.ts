@@ -1,78 +1,106 @@
 import { describe, it, expect } from "vitest";
 import {
-  rollDraw, drawnId, dailyDoneCount, closeDayResult,
-  shouldClaimCombo, activeDraw, todayStr,
+  rollDailyChallenge, challengeCode, AREA_NUMBER,
+  isWindowOpen, getChallengeWindow, todayVancouver,
+  resolvePendingDraw,
 } from "./daily";
-import { DESAFIO_CATS, DAILY_AREAS } from "./mock-data";
-import type { Area } from "./types";
+import { DESAFIO_CATS } from "./mock-data";
 
-const AREAS = DAILY_AREAS as Area[];
+describe("rollDailyChallenge", () => {
+  it("retorna um draw com area e itemIdx válidos", () => {
+    const draw = rollDailyChallenge(DESAFIO_CATS, () => 0.5);
+    const cat = DESAFIO_CATS.find((c) => c.id === draw.area);
+    expect(cat).toBeDefined();
+    expect(draw.itemIdx).toBeGreaterThanOrEqual(0);
+    expect(draw.itemIdx).toBeLessThan(cat!.items.length);
+    expect(draw.done).toBe(false);
+  });
 
-describe("rollDraw", () => {
-  it("sorteia 1 índice válido por área", () => {
-    const draw = rollDraw(DESAFIO_CATS, AREAS, () => 0.5);
-    for (const a of AREAS) {
-      const c = DESAFIO_CATS.find((x) => x.id === a)!;
-      expect(draw.picks[a]).toBeGreaterThanOrEqual(0);
-      expect(draw.picks[a]!).toBeLessThan(c.items.length);
+  it("sorteia da pool completa (pode sortear qualquer área)", () => {
+    const areas = new Set<string>();
+    for (let i = 0; i < 100; i++) {
+      const draw = rollDailyChallenge(DESAFIO_CATS);
+      areas.add(draw.area);
     }
-    expect(draw.date).toBe(todayStr());
+    expect(areas.size).toBeGreaterThan(1);
+  });
+
+  it("dateVancouver é uma data válida", () => {
+    const draw = rollDailyChallenge(DESAFIO_CATS);
+    expect(draw.dateVancouver).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
 
-describe("activeDraw", () => {
-  it("ignora sorteio de outro dia", () => {
-    expect(activeDraw({ date: "2000-01-01", picks: {} })).toBeNull();
+describe("challengeCode", () => {
+  it("quarto item 0 → '1.1'", () => expect(challengeCode("quarto", 0)).toBe("1.1"));
+  it("quarto item 3 → '1.4'", () => expect(challengeCode("quarto", 3)).toBe("1.4"));
+  it("servico item 1 → '3.2'", () => expect(challengeCode("servico", 1)).toBe("3.2"));
+  it("saude item 3 → '5.4'", () => expect(challengeCode("saude", 3)).toBe("5.4"));
+});
+
+describe("AREA_NUMBER", () => {
+  it("quarto = 1", () => expect(AREA_NUMBER.quarto).toBe(1));
+  it("servico = 3", () => expect(AREA_NUMBER.servico).toBe(3));
+  it("saude = 5", () => expect(AREA_NUMBER.saude).toBe(5));
+});
+
+describe("getChallengeWindow", () => {
+  it("janela abre antes de fechar", () => {
+    const { open, close } = getChallengeWindow("2026-06-11");
+    expect(close).toBeGreaterThan(open);
   });
 
-  it("retorna o draw do dia atual", () => {
-    const draw = { date: todayStr(), picks: {} };
-    expect(activeDraw(draw)).toBe(draw);
+  it("janela tem ~23 horas", () => {
+    const { open, close } = getChallengeWindow("2026-06-11");
+    const hours = (close - open) / 3_600_000;
+    expect(hours).toBeCloseTo(23, 0);
   });
 });
 
-describe("dailyDoneCount + closeDayResult", () => {
-  const draw = {
-    date: todayStr(),
-    picks: { quarto: 0, servico: 0, intelectual: 0, saude: 0 },
-  };
-
-  it("0 feitas → perde 15 (3+5+4+3), missed 4", () => {
-    const r = closeDayResult(draw, {}, AREAS, DESAFIO_CATS);
-    expect(r).toEqual({ lost: 15, missed: 4 });
-    expect(dailyDoneCount(draw, {}, AREAS)).toBe(0);
+describe("isWindowOpen", () => {
+  it("fora da janela → false", () => {
+    // 00:30 UTC = antes da abertura (01:00 Vancouver = 08:00 UTC)
+    const earlyUTC = new Date("2026-06-11T00:30:00Z").getTime();
+    expect(isWindowOpen("2026-06-11", earlyUTC)).toBe(false);
   });
 
-  it("4 feitas → perde 0", () => {
-    const done = {
-      "quarto-0": true,
-      "servico-0": true,
-      "intelectual-0": true,
-      "saude-0": true,
-    } as Record<string, true>;
-    expect(closeDayResult(draw, done, AREAS, DESAFIO_CATS)).toEqual({ lost: 0, missed: 0 });
-    expect(dailyDoneCount(draw, done, AREAS)).toBe(4);
+  it("dentro da janela → true", () => {
+    // 12:00 UTC = dentro da janela
+    const midday = new Date("2026-06-11T12:00:00Z").getTime();
+    expect(isWindowOpen("2026-06-11", midday)).toBe(true);
   });
 });
 
-describe("drawnId", () => {
-  it("retorna null se draw for null", () => {
-    expect(drawnId(null, "quarto")).toBeNull();
+describe("resolvePendingDraw", () => {
+  it("null se não há draw", () => {
+    expect(resolvePendingDraw(null, DESAFIO_CATS)).toBeNull();
   });
 
-  it("retorna o id correto", () => {
-    const draw = { date: todayStr(), picks: { quarto: 2 } };
-    expect(drawnId(draw, "quarto")).toBe("quarto-2");
+  it("retorna record quando a janela já fechou", () => {
+    const pastDraw = {
+      dateVancouver: "2026-06-01",
+      area: "servico" as const,
+      itemIdx: 0,
+      done: true,
+    };
+    // Agora é muito depois — janela certamente fechada
+    const futureNow = new Date("2026-07-01T12:00:00Z").getTime();
+    const record = resolvePendingDraw(pastDraw, DESAFIO_CATS, futureNow);
+    expect(record).not.toBeNull();
+    expect(record!.done).toBe(true);
+    expect(record!.pts).toBe(5); // serviço vale 5
+    expect(record!.code).toBe("3.1");
   });
-});
 
-describe("shouldClaimCombo", () => {
-  it("4/4 e não reivindicado", () =>
-    expect(shouldClaimCombo(4, false)).toBe(true));
-
-  it("4/4 já reivindicado", () =>
-    expect(shouldClaimCombo(4, true)).toBe(false));
-
-  it("3/4", () =>
-    expect(shouldClaimCombo(3, false)).toBe(false));
+  it("pts negativo se não fez", () => {
+    const pastDraw = {
+      dateVancouver: "2026-06-01",
+      area: "quarto" as const,
+      itemIdx: 0,
+      done: false,
+    };
+    const futureNow = new Date("2026-07-01T12:00:00Z").getTime();
+    const record = resolvePendingDraw(pastDraw, DESAFIO_CATS, futureNow);
+    expect(record!.pts).toBe(-3); // quarto vale 3, não fez → -3
+  });
 });

@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Draw } from "./types";
+import type { Draw, ChallengeRecord } from "./types";
 import type { Participante } from "./mock-data";
 
 // ── Tipos do estado ───────────────────────────────────────────────
@@ -28,8 +28,11 @@ interface BolaoState {
 
   // Jogo
   guesses: Record<string, { a: number; b: number }>;
+  draw: Draw | null;                    // desafio do dia atual
+  challengeHistory: ChallengeRecord[]; // histórico de desafios resolvidos
+  totalChallengePoints: number;        // soma acumulada de pontos dos desafios
+  // legado (mantido para não quebrar testes)
   desafios: Record<string, true>;
-  draw: Draw | null;
   evidence: Record<string, string>;
   comboBank: number;
   drawComboClaimed: boolean;
@@ -60,8 +63,12 @@ interface BolaoState {
   setGuess: (id: string, side: "a" | "b", dir: 1 | -1) => void;
   saveGuess: (id: string) => void;
 
-  toggleDesafio: (id: string) => void;
+  // Desafio diário
   setDraw: (draw: Draw) => void;
+  markChallengeDone: (done: boolean) => void;
+  resolveChallenge: (record: ChallengeRecord) => void;
+  // legado
+  toggleDesafio: (id: string) => void;
   setEvidence: (id: string, dataUrl: string) => void;
   claimCombo: () => void;
   addPenalty: (n: number) => void;
@@ -94,8 +101,10 @@ const initialState = {
   currentGrupoId: null as string | null,
 
   guesses: {},
-  desafios: {} as Record<string, true>,
   draw: null,
+  challengeHistory: [],
+  totalChallengePoints: 0,
+  desafios: {} as Record<string, true>,
   evidence: {},
   comboBank: 0,
   drawComboClaimed: false,
@@ -146,6 +155,16 @@ export const useBolao = create<BolaoState>()(
         }),
 
       setDraw: (draw) => set({ draw }),
+
+      markChallengeDone: (done) =>
+        set((s) => s.draw ? { draw: { ...s.draw, done } } : {}),
+
+      resolveChallenge: (record) =>
+        set((s) => ({
+          draw: null,
+          challengeHistory: [record, ...s.challengeHistory].slice(0, 90), // guarda 90 dias
+          totalChallengePoints: s.totalChallengePoints + record.pts,
+        })),
 
       setEvidence: (id, dataUrl) =>
         set((state) => ({ evidence: { ...state.evidence, [id]: dataUrl } })),

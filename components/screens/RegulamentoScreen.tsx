@@ -222,23 +222,55 @@ export function RegulamentoScreen() {
       </Secao>
 
       {/* Desafios */}
-      <Secao titulo="6. Pontos dos Desafios (Bônus)">
+      <Secao titulo="6. Desafio Diário">
         <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>
-          Além dos palpites dos jogos, cada participante pode ganhar pontos extras
-          completando os <strong>desafios diários</strong> sorteados — e perder pontos
-          se não cumprir. Os pontos dos desafios somam diretamente ao total do ranking.
+          Todo dia é sorteado <strong>1 desafio</strong> de um banco com 20 opções (5 categorias × 4 itens).
+          O sorteio pode repetir — sem problema. Cada desafio tem um <strong>código numérico</strong> para fácil identificação.
         </p>
-        <Tabela rows={[
-          ["🛏️ Quarto",        "±3 pts"],
-          ["🏠 Casa",           "±3 pts"],
-          ["❤️ Serviço",        "±5 pts"],
-          ["📚 Intelectual",    "±4 pts"],
-          ["💧 Saúde",          "±3 pts"],
-          ["🔥 Combo (4/4)",    "+10 pts bônus"],
-        ]} />
-        <p style={{ fontSize: 12, color: "var(--muted)" }}>
-          * Comprove com foto para garantir os pontos. Sem comprovação ao encerrar o dia → perde os pontos.
-        </p>
+
+        <div>
+          <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>📋 Categorias e códigos:</p>
+          <Tabela rows={[
+            ["1.1 a 1.4", "🛏️ Quarto (±3 pts)"],
+            ["2.1 a 2.4", "🏠 Casa (±3 pts)"],
+            ["3.1 a 3.4", "❤️ Serviço (±5 pts)"],
+            ["4.1 a 4.4", "📚 Intelectual (±4 pts)"],
+            ["5.1 a 5.4", "💧 Saúde (±3 pts)"],
+          ]} />
+        </div>
+
+        <div>
+          <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>⏰ Horários (referência Vancouver, Canadá):</p>
+          <Tabela rows={[
+            ["Sorteio / Abertura", "01h Vancouver · 05h Brasília · 09h Lisboa"],
+            ["Encerramento",       "00h Vancouver · 04h Brasília · 08h Lisboa"],
+            ["Janela aberta",      "~23 horas por dia"],
+          ]} />
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {[
+            "✅ Marque 'Fiz!' no app dentro da janela → ganha os pontos",
+            "❌ Não marcou até encerrar → perde os pontos automaticamente",
+            "🔒 Após o encerramento o desafio é bloqueado — não pode mais alterar",
+            "📸 Tire foto e poste no grupo do WhatsApp como comprovação",
+            "🔄 O sorteio pode repetir desafios — tudo bem!",
+          ].map((item, i) => (
+            <div key={i} style={{ display: "flex", gap: 10, fontSize: 13, color: "var(--text)" }}>
+              <span style={{ color: "var(--neon)", fontWeight: 700, flexShrink: 0 }}>•</span>
+              <span>{item}</span>
+            </div>
+          ))}
+        </div>
+
+        <Exemplo
+          titulo="Desafio 3.2 — Preparar o almoço ou jantar (Serviço ±5)"
+          linhas={[
+            { icon: "🎲", texto: "Sorteado: código 3.2 — Preparar o almoço ou jantar" },
+            { icon: "✅", texto: "Você fez e marcou no app", pts: "+5 pts" },
+            { icon: "❌", texto: "Não fez (ou não marcou a tempo)", pts: "−5 pts" },
+          ]}
+        />
       </Secao>
 
       {/* Prazo */}
