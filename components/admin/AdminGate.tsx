@@ -18,12 +18,16 @@ export function AdminGate({ open, onClose }: AdminGateProps) {
 
   if (!open) return null;
 
+  const { migrateParticipantes } = useBolao();
+
   const submit = () => {
     const admin = findAdmin(user, pass);
     if (admin) {
       setAdminUnlocked(true);
-      setAdminGrupo(admin.id);          // grupo do admin (sessão)
-      setCurrentGrupo(admin.id);        // dispositivo passa a ver este grupo
+      setAdminGrupo(admin.id);
+      setCurrentGrupo(admin.id);
+      // Migra automaticamente participantes sem grupoId para este grupo
+      migrateParticipantes(admin.id);
       setScreen("admin" as Parameters<typeof setScreen>[0]);
       onClose();
     } else {

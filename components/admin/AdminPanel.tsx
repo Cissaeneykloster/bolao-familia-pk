@@ -331,12 +331,14 @@ function TabParticipantes() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [novoLink, setNovoLink] = useState<{ nome: string; link: string } | null>(null);
 
+  // Considera "sem grupo" tanto null, undefined, quanto string vazia
+  const semGrupoId = (p: { grupoId?: string | null }) => !p.grupoId || p.grupoId === "";
   // Mostra participantes do grupo do admin + participantes antigos sem grupoId
   const meusPart = participantes.filter(
-    (p) => p.grupoId === adminGrupoId || !p.grupoId
+    (p) => p.grupoId === adminGrupoId || semGrupoId(p)
   );
   // Participantes antigos que precisam ser migrados (sem grupoId)
-  const semGrupo = participantes.filter((p) => !p.grupoId);
+  const semGrupo = participantes.filter((p) => semGrupoId(p));
   const adminCfg = ADMINS.find((a) => a.id === adminGrupoId);
 
   const handleAdd = () => {

@@ -362,7 +362,7 @@ export const useBolao = create<BolaoState>()(
       migrateParticipantes: (grupoId) =>
         set((s) => ({
           participantes: s.participantes.map((p) =>
-            !p.grupoId ? { ...p, grupoId } : p
+            (!p.grupoId || p.grupoId === "") ? { ...p, grupoId } : p
           ),
         })),
 
