@@ -3,14 +3,118 @@
 import { useState } from "react";
 import { useBolao } from "@/lib/store";
 import { rankWithEff, effPts, mScore, breakdown, bonusPts } from "@/lib/scoring";
-import { MATCHES, LOCKED_BETS, DESAFIO_CATS, ADMINS } from "@/lib/mock-data";
+import { MATCHES, LOCKED_BETS, ADMINS } from "@/lib/mock-data";
 import { participantesToPlayers } from "@/lib/players";
+import { useDesafioCats } from "@/lib/useDesafios";
 
-type AdminTab = "pontos" | "palpites" | "resultados" | "participantes";
+type AdminTab = "pontos" | "palpites" | "resultados" | "participantes" | "desafios";
+
+// ── Aba Desafios ─────────────────────────────────────────────────
+function TabDesafios() {
+  const { setDesafioItem, addDesafioItem, removeDesafioItem, setDesafioPts, resetDesafios } = useBolao();
+  const cats = useDesafioCats();
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+          Edite os desafios — valem para todos os grupos.
+        </p>
+        <button
+          onClick={() => { if (window.confirm("Restaurar os desafios originais?")) resetDesafios(); }}
+          style={{ fontSize: 11, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
+        >
+          Restaurar padrão
+        </button>
+      </div>
+
+      {cats.map((cat) => (
+        <div key={cat.id} style={{ background: "var(--bg-2)", borderRadius: "var(--radius)", border: "1px solid var(--border)", overflow: "hidden" }}>
+          {/* Cabeçalho da categoria */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "var(--card)", borderBottom: "1px solid var(--border)" }}>
+            <span style={{ fontSize: 20 }}>{cat.icon}</span>
+            <span style={{ fontWeight: 700, color: "var(--text)", flex: 1, fontSize: 14 }}>{cat.name}</span>
+            {/* Editar pontos */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>±</span>
+              <button onClick={() => setDesafioPts(cat.id, Math.max(1, cat.pts - 1))}
+                style={{ width: 22, height: 22, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer", fontSize: 12 }}>−</button>
+              <span className="font-bebas" style={{ fontSize: 18, color: "var(--neon)", minWidth: 20, textAlign: "center" }}>{cat.pts}</span>
+              <button onClick={() => setDesafioPts(cat.id, cat.pts + 1)}
+                style={{ width: 22, height: 22, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer", fontSize: 12 }}>+</button>
+              <span style={{ fontSize: 11, color: "var(--muted)" }}>pts</span>
+            </div>
+          </div>
+
+          {/* Itens */}
+          <div style={{ padding: "8px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+            {cat.items.map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 11, color: "var(--muted)", minWidth: 28, fontWeight: 700 }}>
+                  {i + 1}.
+                </span>
+                {editingId === `${cat.id}-${i}` ? (
+                  <input
+                    autoFocus
+                    defaultValue={item}
+                    onBlur={(e) => { setDesafioItem(cat.id, i, e.target.value || item); setEditingId(null); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { setDesafioItem(cat.id, i, e.currentTarget.value || item); setEditingId(null); }
+                      if (e.key === "Escape") setEditingId(null);
+                    }}
+                    style={{ flex: 1, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--neon)", background: "var(--bg-2)", color: "var(--text)", fontSize: 12 }}
+                  />
+                ) : (
+                  <span
+                    onClick={() => setEditingId(`${cat.id}-${i}`)}
+                    style={{ flex: 1, fontSize: 12, color: "var(--text)", cursor: "pointer", padding: "4px 0" }}
+                    title="Clique para editar"
+                  >
+                    {item}
+                  </span>
+                )}
+                <button
+                  onClick={() => setEditingId(`${cat.id}-${i}`)}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 13 }}
+                  aria-label={`Editar ${item}`}
+                >
+                  ✏️
+                </button>
+                {cat.items.length > 1 && (
+                  <button
+                    onClick={() => { if (window.confirm("Remover este desafio?")) removeDesafioItem(cat.id, i); }}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger)", fontSize: 13 }}
+                    aria-label={`Remover ${item}`}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+
+            {/* Adicionar novo item */}
+            <button
+              onClick={() => addDesafioItem(cat.id)}
+              style={{
+                marginTop: 4, padding: "6px 10px", borderRadius: 6, fontSize: 12,
+                border: "1px dashed var(--border)", background: "transparent",
+                color: "var(--muted)", cursor: "pointer", textAlign: "left",
+              }}
+            >
+              + Adicionar desafio
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // ── Aba Pontos ───────────────────────────────────────────────────
 function TabPontos() {
   const { adminDelta, setAdminDelta, resetAdminDelta, desafios, comboBank, penalty, participantes, adminGrupoId } = useBolao();
+  const DESAFIO_CATS = useDesafioCats();
   const bonus = bonusPts(desafios, DESAFIO_CATS, comboBank, penalty);
   const meusPart = participantes.filter((p) => p.grupoId === adminGrupoId && p.ativo);
   const players = participantesToPlayers(meusPart, adminDelta);
@@ -421,6 +525,7 @@ export function AdminPanel() {
     { id: "pontos",        label: "⚖️ Pontos" },
     { id: "palpites",      label: "✏️ Palpites" },
     { id: "resultados",    label: "⚽ Resultados" },
+    { id: "desafios",      label: "🎲 Desafios" },
   ];
 
   return (
@@ -475,6 +580,7 @@ export function AdminPanel() {
       {tab === "pontos"        && <TabPontos />}
       {tab === "palpites"      && <TabPalpites />}
       {tab === "resultados"    && <TabResultados />}
+      {tab === "desafios"      && <TabDesafios />}
 
       {/* Limpar dados do grupo */}
       <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16, marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>

@@ -7,7 +7,7 @@ import {
   getChallengeWindow, isWindowOpen, msUntilClose,
   resolvePendingDraw, challengeCode, AREA_NUMBER,
 } from "@/lib/daily";
-import { DESAFIO_CATS } from "@/lib/mock-data";
+import { useDesafioCats } from "@/lib/useDesafios";
 import { fmtCountdown } from "@/lib/format";
 import { useToast } from "@/components/shell/Toast";
 import { useConfetti } from "@/components/shell/ConfettiCanvas";
@@ -27,6 +27,7 @@ export function SorteioDoDia() {
   const { draw, setDraw, markChallengeDone, resolveChallenge, challengeHistory, totalChallengePoints } = useBolao();
   const { show } = useToast();
   const { fire } = useConfetti();
+  const DESAFIO_CATS = useDesafioCats();
 
   const today = todayVancouver();
   const windowOpen = draw ? isWindowOpen(draw.dateVancouver) : false;

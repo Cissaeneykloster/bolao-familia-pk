@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useBolao } from "@/lib/store";
 import { bonusPts } from "@/lib/scoring";
-import { DESAFIO_CATS, MATCHES, ADMINS } from "@/lib/mock-data";
+import { MATCHES, ADMINS } from "@/lib/mock-data";
+import { useDesafioCats } from "@/lib/useDesafios";
 
 export function Header() {
-  const { desafios, comboBank, penalty, participantes, currentGrupoId, currentUserApelido } = useBolao();
+  const { desafios, comboBank, penalty, currentGrupoId, currentUserApelido, participantes } = useBolao();
+  const DESAFIO_CATS = useDesafioCats();
   const bonus = bonusPts(desafios, DESAFIO_CATS, comboBank, penalty);
   const totalPts = bonus;
 

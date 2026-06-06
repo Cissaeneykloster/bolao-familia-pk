@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useBolao } from "@/lib/store";
 import { rankWithEff, bonusPts, effPts } from "@/lib/scoring";
-import { DESAFIO_CATS } from "@/lib/mock-data";
+import { useDesafioCats } from "@/lib/useDesafios";
 import { participantesToPlayers } from "@/lib/players";
 import type { Player } from "@/lib/types";
 
@@ -139,6 +139,7 @@ function PodiumC({ top3, adminDelta, bonus }: { top3: Player[]; adminDelta: Reco
 // ── Componente principal ──────────────────────────────────────────
 export function Podium() {
   const { podium, adminDelta, desafios, comboBank, penalty, participantes, currentGrupoId } = useBolao();
+  const DESAFIO_CATS = useDesafioCats();
   const bonus = bonusPts(desafios, DESAFIO_CATS, comboBank, penalty);
   // Filtra só participantes do grupo ativo neste dispositivo
   const doGrupo = currentGrupoId

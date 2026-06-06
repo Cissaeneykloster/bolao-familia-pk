@@ -1,10 +1,11 @@
 "use client";
 
 import { useBolao } from "@/lib/store";
-import { DESAFIO_CATS } from "@/lib/mock-data";
+import { useDesafioCats } from "@/lib/useDesafios";
 
 export function BancoDeDesafios() {
   const { desafios, toggleDesafio } = useBolao();
+  const CATS = useDesafioCats();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -15,7 +16,7 @@ export function BancoDeDesafios() {
         Marque para treinar — não conta pontos nesta seção.
       </p>
 
-      {DESAFIO_CATS.map((cat) => {
+      {CATS.map((cat) => {
         const done = cat.items.filter((_, i) => desafios[`${cat.id}-${i}`]).length;
         return (
           <div key={cat.id} style={{
@@ -24,7 +25,6 @@ export function BancoDeDesafios() {
             border: "1px solid var(--border)",
             overflow: "hidden",
           }}>
-            {/* Cabeçalho da categoria */}
             <div style={{
               display: "flex",
               justifyContent: "space-between",
@@ -41,7 +41,6 @@ export function BancoDeDesafios() {
               </span>
             </div>
 
-            {/* Lista de itens */}
             <div style={{ padding: "8px 0" }}>
               {cat.items.map((item, i) => {
                 const id = `${cat.id}-${i}`;
@@ -67,12 +66,7 @@ export function BancoDeDesafios() {
                       aria-label={item}
                       style={{ width: 16, height: 16, accentColor: "var(--neon)", cursor: "pointer", flexShrink: 0 }}
                     />
-                    <span style={{
-                      fontSize: 13,
-                      color: checked ? "var(--text)" : "var(--muted)",
-                      textDecoration: checked ? "none" : "none",
-                      flex: 1,
-                    }}>
+                    <span style={{ fontSize: 13, color: checked ? "var(--text)" : "var(--muted)", flex: 1 }}>
                       {item}
                     </span>
                     {checked && (

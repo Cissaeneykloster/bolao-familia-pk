@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useBolao } from "@/lib/store";
 import { rankWithEff, bonusPts, effPts } from "@/lib/scoring";
-import { DESAFIO_CATS } from "@/lib/mock-data";
+import { useDesafioCats } from "@/lib/useDesafios";
 import { participantesToPlayers } from "@/lib/players";
 import type { Player } from "@/lib/types";
 
@@ -36,6 +36,7 @@ function PlayerAvatar({ player }: { player: Player }) {
 
 export function RankingList() {
   const { adminDelta, desafios, comboBank, penalty, participantes, currentGrupoId } = useBolao();
+  const DESAFIO_CATS = useDesafioCats();
   const bonus = bonusPts(desafios, DESAFIO_CATS, comboBank, penalty);
   const doGrupo = currentGrupoId
     ? participantes.filter((p) => p.grupoId === currentGrupoId && p.ativo)
