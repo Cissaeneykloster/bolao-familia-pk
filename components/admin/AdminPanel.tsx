@@ -326,13 +326,17 @@ function TabResultados() {
 
 // ── Aba Participantes ────────────────────────────────────────────
 function TabParticipantes() {
-  const { participantes, addParticipante, removeParticipante, toggleParticipanteAtivo, adminGrupoId } = useBolao();
+  const { participantes, addParticipante, removeParticipante, toggleParticipanteAtivo, adminGrupoId, migrateParticipantes } = useBolao();
   const [form, setForm] = useState({ nome: "", apelido: "", email: "", telefone: "" });
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [novoLink, setNovoLink] = useState<{ nome: string; link: string } | null>(null);
 
-  // Mostra só participantes do grupo do admin logado
-  const meusPart = participantes.filter((p) => p.grupoId === adminGrupoId);
+  // Mostra participantes do grupo do admin + participantes antigos sem grupoId
+  const meusPart = participantes.filter(
+    (p) => p.grupoId === adminGrupoId || !p.grupoId
+  );
+  // Participantes antigos que precisam ser migrados (sem grupoId)
+  const semGrupo = participantes.filter((p) => !p.grupoId);
   const adminCfg = ADMINS.find((a) => a.id === adminGrupoId);
 
   const handleAdd = () => {
@@ -364,6 +368,37 @@ function TabParticipantes() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* ── Banner de migração (participantes sem grupo) ── */}
+      {semGrupo.length > 0 && adminGrupoId && (
+        <div style={{
+          padding: "12px 14px", borderRadius: 10,
+          background: "rgba(255,216,77,0.1)",
+          border: "1px solid rgba(255,216,77,0.4)",
+          display: "flex", flexDirection: "column", gap: 8,
+        }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: "var(--warn)", margin: 0 }}>
+            ⚠️ {semGrupo.length} participante{semGrupo.length > 1 ? "s" : ""} sem grupo definido
+          </p>
+          <p style={{ fontSize: 12, color: "var(--muted)", margin: 0, lineHeight: 1.4 }}>
+            Foram cadastrados antes do sistema de grupos. Clique para atribuí-los ao <strong style={{ color: "var(--neon)" }}>{adminCfg?.nomeGrupo}</strong>:
+          </p>
+          <button
+            onClick={() => {
+              if (window.confirm(`Mover ${semGrupo.length} participante(s) para o ${adminCfg?.nomeGrupo}?`)) {
+                migrateParticipantes(adminGrupoId);
+              }
+            }}
+            style={{
+              padding: "8px 16px", borderRadius: 8, border: "none",
+              background: "var(--warn)", color: "#000",
+              fontWeight: 700, fontSize: 13, cursor: "pointer",
+            }}
+          >
+            ✅ Mover para {adminCfg?.nomeGrupo}
+          </button>
+        </div>
+      )}
+
       {/* Badge do grupo */}
       {adminCfg && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "rgba(0,255,135,0.07)", borderRadius: 8, border: "1px solid rgba(0,255,135,0.2)" }}>

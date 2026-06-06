@@ -120,6 +120,8 @@ interface BolaoState {
   removeParticipante: (id: string) => void;
   toggleParticipanteAtivo: (id: string) => void;
   clearGrupoData: (grupoId: string) => void;
+  // Migra participantes antigos (sem grupoId) para um grupo
+  migrateParticipantes: (grupoId: string) => void;
 }
 
 // ── Valores iniciais ──────────────────────────────────────────────
@@ -354,6 +356,13 @@ export const useBolao = create<BolaoState>()(
         set((s) => ({
           participantes: s.participantes.map((p) =>
             p.id === id ? { ...p, ativo: !p.ativo } : p
+          ),
+        })),
+
+      migrateParticipantes: (grupoId) =>
+        set((s) => ({
+          participantes: s.participantes.map((p) =>
+            !p.grupoId ? { ...p, grupoId } : p
           ),
         })),
 
