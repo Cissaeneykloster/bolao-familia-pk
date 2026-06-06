@@ -51,8 +51,9 @@ interface BolaoState {
   drawComboClaimed: boolean;
   penalty: number;
 
-  // Desafios editáveis (persistidos — admin pode personalizar)
-  desafioCats: DesafioCat[];
+  // Desafios editáveis por grupo (cada grupo tem os seus)
+  // Se o grupo não tiver personalizado, usa os padrões (DEFAULT_CATS)
+  desafioCatsByGroup: Record<string, DesafioCat[]>;
 
   // Admin — sessão (NÃO persistida)
   adminUnlocked: boolean;
@@ -100,12 +101,12 @@ interface BolaoState {
   addPenalty: (n: number) => void;
   clearDay: () => void;
 
-  // Edição dos desafios
-  setDesafioItem: (catId: string, idx: number, text: string) => void;
-  addDesafioItem: (catId: string) => void;
-  removeDesafioItem: (catId: string, idx: number) => void;
-  setDesafioPts: (catId: string, pts: number) => void;
-  resetDesafios: () => void;
+  // Edição dos desafios (scoped por grupoId do admin logado)
+  setDesafioItem: (grupoId: string, catId: string, idx: number, text: string) => void;
+  addDesafioItem: (grupoId: string, catId: string) => void;
+  removeDesafioItem: (grupoId: string, catId: string, idx: number) => void;
+  setDesafioPts: (grupoId: string, catId: string, pts: number) => void;
+  resetDesafios: (grupoId: string) => void;
 
   setAdminUnlocked: (v: boolean) => void;
   setAdminGrupo: (grupoId: string | null) => void;
@@ -134,7 +135,7 @@ const initialState = {
   currentGrupoId: null as string | null,
   currentUserApelido: null as string | null,
 
-  desafioCats: DEFAULT_CATS,
+  desafioCatsByGroup: {},
   feedEvents: [],
   groupPredictions: {},
   groupPredictionsSaved: false,
@@ -194,39 +195,71 @@ export const useBolao = create<BolaoState>()(
           return { desafios: next };
         }),
 
-      setDesafioItem: (catId, idx, text) =>
-        set((s) => ({
-          desafioCats: s.desafioCats.map((c) =>
-            c.id === catId
-              ? { ...c, items: c.items.map((it, i) => (i === idx ? text : it)) }
-              : c
-          ),
-        })),
+      // Helper interno: retorna os cats do grupo (ou padrão se não personalizado)
+      // Usado pelas actions abaixo
 
-      addDesafioItem: (catId) =>
-        set((s) => ({
-          desafioCats: s.desafioCats.map((c) =>
-            c.id === catId ? { ...c, items: [...c.items, "Novo desafio"] } : c
-          ),
-        })),
+      setDesafioItem: (grupoId, catId, idx, text) =>
+        set((s) => {
+          const base = s.desafioCatsByGroup[grupoId] ?? DEFAULT_CATS;
+          return {
+            desafioCatsByGroup: {
+              ...s.desafioCatsByGroup,
+              [grupoId]: base.map((c) =>
+                c.id === catId
+                  ? { ...c, items: c.items.map((it, i) => (i === idx ? text : it)) }
+                  : c
+              ),
+            },
+          };
+        }),
 
-      removeDesafioItem: (catId, idx) =>
-        set((s) => ({
-          desafioCats: s.desafioCats.map((c) =>
-            c.id === catId
-              ? { ...c, items: c.items.filter((_, i) => i !== idx) }
-              : c
-          ),
-        })),
+      addDesafioItem: (grupoId, catId) =>
+        set((s) => {
+          const base = s.desafioCatsByGroup[grupoId] ?? DEFAULT_CATS;
+          return {
+            desafioCatsByGroup: {
+              ...s.desafioCatsByGroup,
+              [grupoId]: base.map((c) =>
+                c.id === catId ? { ...c, items: [...c.items, "Novo desafio"] } : c
+              ),
+            },
+          };
+        }),
 
-      setDesafioPts: (catId, pts) =>
-        set((s) => ({
-          desafioCats: s.desafioCats.map((c) =>
-            c.id === catId ? { ...c, pts } : c
-          ),
-        })),
+      removeDesafioItem: (grupoId, catId, idx) =>
+        set((s) => {
+          const base = s.desafioCatsByGroup[grupoId] ?? DEFAULT_CATS;
+          return {
+            desafioCatsByGroup: {
+              ...s.desafioCatsByGroup,
+              [grupoId]: base.map((c) =>
+                c.id === catId
+                  ? { ...c, items: c.items.filter((_, i) => i !== idx) }
+                  : c
+              ),
+            },
+          };
+        }),
 
-      resetDesafios: () => set({ desafioCats: DEFAULT_CATS }),
+      setDesafioPts: (grupoId, catId, pts) =>
+        set((s) => {
+          const base = s.desafioCatsByGroup[grupoId] ?? DEFAULT_CATS;
+          return {
+            desafioCatsByGroup: {
+              ...s.desafioCatsByGroup,
+              [grupoId]: base.map((c) =>
+                c.id === catId ? { ...c, pts } : c
+              ),
+            },
+          };
+        }),
+
+      resetDesafios: (grupoId) =>
+        set((s) => {
+          const next = { ...s.desafioCatsByGroup };
+          delete next[grupoId];
+          return { desafioCatsByGroup: next };
+        }),
 
       setGroupPrediction: (group, first, second) =>
         set((s) => {

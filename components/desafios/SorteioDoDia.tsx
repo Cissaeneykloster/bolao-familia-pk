@@ -24,10 +24,10 @@ function useWindowCountdown(dateVancouver: string) {
 
 // ── Componente ───────────────────────────────────────────────────
 export function SorteioDoDia() {
-  const { draw, setDraw, markChallengeDone, resolveChallenge, challengeHistory, totalChallengePoints } = useBolao();
+  const { draw, setDraw, markChallengeDone, resolveChallenge, challengeHistory, totalChallengePoints, desafioCatsByGroup, currentGrupoId } = useBolao();
   const { show } = useToast();
   const { fire } = useConfetti();
-  const DESAFIO_CATS = useDesafioCats();
+  const DESAFIO_CATS = useDesafioCats(); // desafios do grupo atual
 
   const today = todayVancouver();
   const windowOpen = draw ? isWindowOpen(draw.dateVancouver) : false;

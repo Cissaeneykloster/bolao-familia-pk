@@ -11,18 +11,20 @@ type AdminTab = "pontos" | "palpites" | "resultados" | "participantes" | "desafi
 
 // ── Aba Desafios ─────────────────────────────────────────────────
 function TabDesafios() {
-  const { setDesafioItem, addDesafioItem, removeDesafioItem, setDesafioPts, resetDesafios } = useBolao();
-  const cats = useDesafioCats();
+  const { setDesafioItem, addDesafioItem, removeDesafioItem, setDesafioPts, resetDesafios, adminGrupoId } = useBolao();
+  const cats = useDesafioCats(); // já retorna os do grupo do admin logado
   const [editingId, setEditingId] = useState<string | null>(null);
+  const gid = adminGrupoId ?? "";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-          Edite os desafios — valem para todos os grupos.
+          Desafios exclusivos do <strong style={{ color: "var(--neon)" }}>{ADMINS.find(a => a.id === gid)?.nomeGrupo ?? "seu grupo"}</strong>.
+          Cada grupo tem os seus.
         </p>
         <button
-          onClick={() => { if (window.confirm("Restaurar os desafios originais?")) resetDesafios(); }}
+          onClick={() => { if (window.confirm("Restaurar os desafios originais do seu grupo?")) resetDesafios(gid); }}
           style={{ fontSize: 11, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
         >
           Restaurar padrão
@@ -38,10 +40,10 @@ function TabDesafios() {
             {/* Editar pontos */}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 12, color: "var(--muted)" }}>±</span>
-              <button onClick={() => setDesafioPts(cat.id, Math.max(1, cat.pts - 1))}
+              <button onClick={() => setDesafioPts(gid, cat.id, Math.max(1, cat.pts - 1))}
                 style={{ width: 22, height: 22, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer", fontSize: 12 }}>−</button>
               <span className="font-bebas" style={{ fontSize: 18, color: "var(--neon)", minWidth: 20, textAlign: "center" }}>{cat.pts}</span>
-              <button onClick={() => setDesafioPts(cat.id, cat.pts + 1)}
+              <button onClick={() => setDesafioPts(gid, cat.id, cat.pts + 1)}
                 style={{ width: 22, height: 22, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer", fontSize: 12 }}>+</button>
               <span style={{ fontSize: 11, color: "var(--muted)" }}>pts</span>
             </div>
@@ -58,9 +60,9 @@ function TabDesafios() {
                   <input
                     autoFocus
                     defaultValue={item}
-                    onBlur={(e) => { setDesafioItem(cat.id, i, e.target.value || item); setEditingId(null); }}
+                    onBlur={(e) => { setDesafioItem(gid, cat.id, i, e.target.value || item); setEditingId(null); }}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") { setDesafioItem(cat.id, i, e.currentTarget.value || item); setEditingId(null); }
+                      if (e.key === "Enter") { setDesafioItem(gid, cat.id, i, e.currentTarget.value || item); setEditingId(null); }
                       if (e.key === "Escape") setEditingId(null);
                     }}
                     style={{ flex: 1, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--neon)", background: "var(--bg-2)", color: "var(--text)", fontSize: 12 }}
@@ -83,7 +85,7 @@ function TabDesafios() {
                 </button>
                 {cat.items.length > 1 && (
                   <button
-                    onClick={() => { if (window.confirm("Remover este desafio?")) removeDesafioItem(cat.id, i); }}
+                    onClick={() => { if (window.confirm("Remover este desafio?")) removeDesafioItem(gid, cat.id, i); }}
                     style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger)", fontSize: 13 }}
                     aria-label={`Remover ${item}`}
                   >
@@ -95,7 +97,7 @@ function TabDesafios() {
 
             {/* Adicionar novo item */}
             <button
-              onClick={() => addDesafioItem(cat.id)}
+              onClick={() => addDesafioItem(gid, cat.id)}
               style={{
                 marginTop: 4, padding: "6px 10px", borderRadius: 6, fontSize: 12,
                 border: "1px dashed var(--border)", background: "transparent",
