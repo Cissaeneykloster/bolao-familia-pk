@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Draw, ChallengeRecord } from "./types";
+import type { Draw, ChallengeRecord, FeedEvent } from "./types";
 import type { Participante } from "./mock-data";
 
 // ── Tipos do estado ───────────────────────────────────────────────
@@ -25,6 +25,9 @@ interface BolaoState {
 
   // Grupo ativo (persiste — cada dispositivo sabe a qual grupo pertence)
   currentGrupoId: string | null;
+
+  // Feed (gerado automaticamente + anúncios do admin)
+  feedEvents: FeedEvent[];
 
   // Jogo
   guesses: Record<string, { a: number; b: number }>;
@@ -63,6 +66,11 @@ interface BolaoState {
   setGuess: (id: string, side: "a" | "b", dir: 1 | -1) => void;
   saveGuess: (id: string) => void;
 
+  // Feed
+  addFeedEvent: (event: Omit<FeedEvent, "id" | "timestamp">) => void;
+  removeFeedEvent: (id: string) => void;
+  clearFeed: () => void;
+
   // Desafio diário
   setDraw: (draw: Draw) => void;
   markChallengeDone: (done: boolean) => void;
@@ -100,6 +108,7 @@ const initialState = {
   current: "ranking" as Screen,
   currentGrupoId: null as string | null,
 
+  feedEvents: [],
   guesses: {},
   draw: null,
   challengeHistory: [],
@@ -153,6 +162,23 @@ export const useBolao = create<BolaoState>()(
           if (next[id]) { delete next[id]; } else { next[id] = true; }
           return { desafios: next };
         }),
+
+      addFeedEvent: (event) =>
+        set((s) => ({
+          feedEvents: [
+            {
+              ...event,
+              id: Math.random().toString(36).slice(2, 12),
+              timestamp: Date.now(),
+            },
+            ...s.feedEvents,
+          ].slice(0, 200), // mantém os 200 mais recentes
+        })),
+
+      removeFeedEvent: (id) =>
+        set((s) => ({ feedEvents: s.feedEvents.filter((e) => e.id !== id) })),
+
+      clearFeed: () => set({ feedEvents: [] }),
 
       setDraw: (draw) => set({ draw }),
 

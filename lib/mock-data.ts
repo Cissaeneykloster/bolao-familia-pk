@@ -648,52 +648,13 @@ export const GROUPS: Group[] = [
 ];
 
 // ── Feed ─────────────────────────────────────────────────────────
-export const FEED: FeedEvent[] = [
-  {
-    type: "exact", age: 2,
-    body: "Rafael acertou o placar exato! Brasil 2×1 Argentina — subiu do 2º para o 1º lugar 🚀",
-    pts: "+25 pts",
-  },
-  {
-    type: "result", age: 5,
-    body: "Resultado confirmado",
-    score: { a: "Brasil", sa: 2, sb: 1, b: "Argentina" },
-    stats: ["6 de 10 acertaram o vencedor", "2 de 10 acertaram o placar"],
-  },
-  {
-    type: "winner", age: 12,
-    body: "Marcos acertou o vencedor — Brasil × Argentina",
-    pts: "+8 pts",
-  },
-  {
-    type: "sent", age: 15,
-    body: "Ana fez seu palpite em Brasil × Argentina",
-  },
-  {
-    type: "result", age: 31,
-    body: "Resultado confirmado",
-    score: { a: "Espanha", sa: 3, sb: 0, b: "Costa Rica" },
-    stats: ["8 de 10 acertaram o vencedor", "1 de 10 acertou o placar"],
-  },
-  {
-    type: "winner", age: 33,
-    body: "Carla acertou o vencedor — Espanha × Costa Rica",
-    pts: "+5 pts",
-  },
-  {
-    type: "sent", age: 44,
-    body: "Pedro fez seu palpite em Alemanha × Portugal",
-  },
-  {
-    type: "sent", age: 58,
-    body: "Lucia fez seu palpite em México × EUA",
-  },
-];
+// Feed começa vazio — eventos são gerados automaticamente pelas ações
+export const FEED: FeedEvent[] = [];
 
-export const LIVE_FEED_POOL: FeedEvent[] = [
-  { type: "sent", age: 0, body: "João fez seu palpite em França × Inglaterra" },
-  { type: "sent", age: 0, body: "Bruno fez seu palpite em Japão × Coreia do Sul" },
-  { type: "winner", age: 0, body: "Marina acertou o vencedor — França × Inglaterra", pts: "+5 pts" },
+export const LIVE_FEED_POOL: Omit<FeedEvent, "id" | "timestamp">[] = [
+  { type: "sent", body: "João fez seu palpite em França × Inglaterra" },
+  { type: "sent", body: "Bruno fez seu palpite em Japão × Coreia do Sul" },
+  { type: "winner", body: "Marina acertou o vencedor — França × Inglaterra", pts: "+5 pts" },
 ];
 
 // ── Desafios ──────────────────────────────────────────────────────

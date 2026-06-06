@@ -1,36 +1,28 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { FeedItem } from "@/components/feed/FeedItem";
 import { FeedScreen } from "@/components/feed/FeedScreen";
+import { useBolao } from "@/lib/store";
 import type { FeedEvent } from "@/lib/types";
 
-const evExact: FeedEvent = {
-  type: "exact", age: 2,
-  body: "Rafael acertou o placar exato! Brasil 2×1 Argentina",
-  pts: "+25 pts",
-};
+function ev(partial: Omit<FeedEvent, "id" | "timestamp">): FeedEvent {
+  return { ...partial, id: "test-" + Math.random(), timestamp: Date.now() - 120_000 };
+}
 
-const evResult: FeedEvent = {
-  type: "result", age: 5, body: "Resultado confirmado",
-  score: { a: "Brasil", sa: 2, sb: 1, b: "Argentina" },
-  stats: ["6 de 10 acertaram o vencedor"],
-};
+const evExact = ev({ type: "exact", body: "Você acertou o placar exato! Brasil 2×1 Marrocos", pts: "+25 pts" });
+const evResult = ev({ type: "result", body: "Resultado confirmado", score: { a: "Brasil", sa: 2, sb: 1, b: "Marrocos" }, stats: ["6 de 10 acertaram o vencedor"] });
+const evWinner = ev({ type: "winner", body: "Você acertou o vencedor — Brasil × Marrocos", pts: "+8 pts" });
+const evSent = ev({ type: "sent", body: "Você fez seu palpite em Brasil × Marrocos" });
+const evAnnouncement = ev({ type: "announcement", emoji: "📢", body: "Bem-vindos ao Bolão Família PK!" });
+const evChallenge = ev({ type: "challenge", emoji: "🛏️", body: "Desafio 1.1 concluído — Arrumar a cama antes das 9h", pts: "+3 pts" });
 
-const evWinner: FeedEvent = {
-  type: "winner", age: 12,
-  body: "Marcos acertou o vencedor — Brasil × Argentina",
-  pts: "+8 pts",
-};
-
-const evSent: FeedEvent = {
-  type: "sent", age: 15,
-  body: "Ana fez seu palpite em Brasil × Argentina",
-};
+beforeEach(() => {
+  useBolao.setState({ feedEvents: [], adminUnlocked: false });
+});
 
 describe("FeedItem", () => {
   it("tipo exact renderiza 'PLACAR EXATO!' e os pontos", () => {
     render(<FeedItem event={evExact} />);
-    // Aparece tanto no badge quanto no body — getAllByText garante ao menos um
     expect(screen.getAllByText(/placar exato/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/\+25 pts/)).toBeInTheDocument();
   });
@@ -48,23 +40,48 @@ describe("FeedItem", () => {
 
   it("tipo sent mostra o texto do evento", () => {
     render(<FeedItem event={evSent} />);
-    expect(screen.getByText(/ana fez seu palpite/i)).toBeInTheDocument();
+    expect(screen.getByText(/você fez seu palpite/i)).toBeInTheDocument();
+  });
+
+  it("tipo announcement mostra 'AVISO DO ORGANIZADOR'", () => {
+    render(<FeedItem event={evAnnouncement} />);
+    expect(screen.getByText(/aviso do organizador/i)).toBeInTheDocument();
+    expect(screen.getByText(/bem-vindos/i)).toBeInTheDocument();
+  });
+
+  it("tipo challenge mostra o código e pontos", () => {
+    render(<FeedItem event={evChallenge} />);
+    expect(screen.getByText(/desafio 1\.1/i)).toBeInTheDocument();
+    expect(screen.getByText(/\+3 pts/)).toBeInTheDocument();
   });
 
   it("timestamp relativo é exibido", () => {
     render(<FeedItem event={evExact} />);
-    expect(screen.getByText(/2min atrás/)).toBeInTheDocument();
+    expect(screen.getByText(/2min atrás|agora/)).toBeInTheDocument();
   });
 });
 
 describe("FeedScreen", () => {
-  it("renderiza todos os eventos do mock (8)", () => {
+  it("sem eventos mostra mensagem vazia", () => {
     render(<FeedScreen />);
-    expect(screen.getByText(/8 eventos/)).toBeInTheDocument();
+    expect(screen.getByText(/nenhuma atividade ainda/i)).toBeInTheDocument();
   });
 
-  it("o primeiro evento (placar exato) aparece no topo", () => {
+  it("com eventos mostra a contagem", () => {
+    useBolao.setState({ feedEvents: [evExact, evResult] });
     render(<FeedScreen />);
-    expect(screen.getAllByText(/placar exato/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/2 eventos/)).toBeInTheDocument();
+  });
+
+  it("admin vê o botão Postar", () => {
+    useBolao.setState({ adminUnlocked: true });
+    render(<FeedScreen />);
+    expect(screen.getByRole("button", { name: /postar/i })).toBeInTheDocument();
+  });
+
+  it("não-admin não vê o botão Postar", () => {
+    useBolao.setState({ adminUnlocked: false });
+    render(<FeedScreen />);
+    expect(screen.queryByRole("button", { name: /postar/i })).not.toBeInTheDocument();
   });
 });

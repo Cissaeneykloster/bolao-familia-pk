@@ -12,6 +12,7 @@ export function PalpitesScreen() {
   const { guesses, resultFix } = useBolao();
   const { show } = useToast();
   const { fire } = useConfetti();
+  const { addFeedEvent } = useBolao();
 
   const apostados = Object.keys(guesses).length;
   const total = MATCHES.length;
@@ -23,11 +24,24 @@ export function PalpitesScreen() {
   const handleSaved = (matchId: string) => {
     show("✅ Palpite salvo!");
     const g = guesses[matchId];
-    if (g) {
-      const match = MATCHES.find((m) => m.id === matchId);
-      if (match?.status === "finished") {
+    const match = MATCHES.find((m) => m.id === matchId);
+    if (g && match) {
+      // Registra no feed (sem revelar o placar apostado)
+      addFeedEvent({
+        type: "sent",
+        body: `Você fez seu palpite em ${match.a.name} × ${match.b.name}`,
+      });
+      // Se for treino/encerrado, verifica placar exato
+      if (match.status === "finished") {
         const actual = mScore(match, resultFix);
-        if (g.a === actual.sa && g.b === actual.sb) fire();
+        if (g.a === actual.sa && g.b === actual.sb) {
+          fire();
+          addFeedEvent({
+            type: "exact",
+            body: `Placar exato! ${match.a.name} ${actual.sa}×${actual.sb} ${match.b.name}`,
+            pts: "+25 pts",
+          });
+        }
       }
     }
   };

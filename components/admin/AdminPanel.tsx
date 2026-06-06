@@ -151,7 +151,7 @@ function TabPalpites() {
 
 // ── Aba Resultados ───────────────────────────────────────────────
 function TabResultados() {
-  const { resultFix, setResultFix } = useBolao();
+  const { resultFix, setResultFix, addFeedEvent } = useBolao();
   const [drafts, setDrafts] = useState<Record<string, { sa: number; sb: number }>>({});
   const nonUpcoming = MATCHES.filter((m) => m.status !== "upcoming");
 
@@ -195,7 +195,14 @@ function TabResultados() {
               <div style={{ flex: 1 }} />
               <button
                 aria-label={`Salvar resultado ${m.id}`}
-                onClick={() => setResultFix(m.id, draft)}
+                onClick={() => {
+                  setResultFix(m.id, draft);
+                  addFeedEvent({
+                    type: "result",
+                    body: "Resultado confirmado",
+                    score: { a: m.a.name, sa: draft.sa, sb: draft.sb, b: m.b.name },
+                  });
+                }}
                 style={{
                   padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700,
                   border: "none", background: "var(--field)", color: "var(--neon)", cursor: "pointer",

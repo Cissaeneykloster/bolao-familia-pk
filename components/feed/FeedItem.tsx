@@ -1,15 +1,24 @@
 "use client";
 
-import { feedAge } from "@/lib/format";
 import type { FeedEvent } from "@/lib/types";
 
 interface FeedItemProps {
   event: FeedEvent;
   index?: number;
+  onDelete?: (id: string) => void;
 }
 
-export function FeedItem({ event, index = 0 }: FeedItemProps) {
-  const age = feedAge(event.age);
+function relAge(timestamp: number): string {
+  const min = Math.round((Date.now() - timestamp) / 60_000);
+  if (min <= 0) return "agora";
+  if (min < 60) return `${min}min atrás`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h}h atrás`;
+  return `${Math.floor(h / 24)}d atrás`;
+}
+
+export function FeedItem({ event, index = 0, onDelete }: FeedItemProps) {
+  const age = relAge(event.timestamp);
 
   const typeStyles: Record<FeedEvent["type"], React.CSSProperties> = {
     exact: {
@@ -30,6 +39,15 @@ export function FeedItem({ event, index = 0 }: FeedItemProps) {
       background: "var(--card)",
       border: "1px solid var(--border)",
     },
+    challenge: {
+      background: "color-mix(in srgb, var(--neon) 5%, var(--card))",
+      border: "1px solid rgba(0,255,135,0.25)",
+    },
+    announcement: {
+      background: "linear-gradient(135deg, #1a1030, #120c25)",
+      border: "1px solid rgba(136,68,255,0.5)",
+      boxShadow: "0 0 12px rgba(136,68,255,0.15)",
+    },
   };
 
   return (
@@ -41,11 +59,28 @@ export function FeedItem({ event, index = 0 }: FeedItemProps) {
         display: "flex",
         flexDirection: "column",
         gap: 6,
-        animationDelay: `${index * 0.06}s`,
+        animationDelay: `${index * 0.05}s`,
+        position: "relative",
         ...typeStyles[event.type],
       }}
     >
-      {/* Tipo exact */}
+      {/* Botão deletar (só visível para admin) */}
+      {onDelete && (
+        <button
+          aria-label="Remover evento"
+          onClick={() => onDelete(event.id)}
+          style={{
+            position: "absolute", top: 8, right: 10,
+            background: "none", border: "none", cursor: "pointer",
+            color: "var(--muted)", fontSize: 14, lineHeight: 1,
+            opacity: 0.5,
+          }}
+        >
+          ✕
+        </button>
+      )}
+
+      {/* 🎯 PLACAR EXATO */}
       {event.type === "exact" && (
         <>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -67,7 +102,7 @@ export function FeedItem({ event, index = 0 }: FeedItemProps) {
         </>
       )}
 
-      {/* Tipo result */}
+      {/* ⚽ RESULTADO */}
       {event.type === "result" && (
         <>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -75,25 +110,21 @@ export function FeedItem({ event, index = 0 }: FeedItemProps) {
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{event.body}</span>
           </div>
           {event.score && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0" }}>
               <span style={{ fontSize: 13, color: "var(--text)", fontWeight: 600 }}>{event.score.a}</span>
-              <span className="font-bebas" style={{ fontSize: 24, color: "var(--neon)", letterSpacing: 4 }}>
+              <span className="font-bebas" style={{ fontSize: 22, color: "var(--neon)", letterSpacing: 4 }}>
                 {event.score.sa} × {event.score.sb}
               </span>
               <span style={{ fontSize: 13, color: "var(--text)", fontWeight: 600 }}>{event.score.b}</span>
             </div>
           )}
-          {event.stats && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {event.stats.map((s, i) => (
-                <span key={i} style={{ fontSize: 12, color: "var(--muted)" }}>📊 {s}</span>
-              ))}
-            </div>
-          )}
+          {event.stats?.map((s, i) => (
+            <span key={i} style={{ fontSize: 12, color: "var(--muted)" }}>📊 {s}</span>
+          ))}
         </>
       )}
 
-      {/* Tipo winner */}
+      {/* ✅ VENCEDOR */}
       {event.type === "winner" && (
         <>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -106,12 +137,38 @@ export function FeedItem({ event, index = 0 }: FeedItemProps) {
         </>
       )}
 
-      {/* Tipo sent */}
+      {/* 🎮 PALPITE ENVIADO */}
       {event.type === "sent" && (
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontSize: 16 }}>🎮</span>
           <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>{event.body}</p>
         </div>
+      )}
+
+      {/* 🏅 DESAFIO */}
+      {event.type === "challenge" && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 16 }}>{event.emoji ?? "🏅"}</span>
+          <p style={{ fontSize: 13, color: "var(--text)", margin: 0 }}>{event.body}</p>
+          {event.pts && (
+            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--neon)", marginLeft: "auto" }}>{event.pts}</span>
+          )}
+        </div>
+      )}
+
+      {/* 📢 ANÚNCIO DO ADMIN */}
+      {event.type === "announcement" && (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 20 }}>{event.emoji ?? "📢"}</span>
+            <span className="font-bebas" style={{ fontSize: 16, color: "#a888ff", letterSpacing: 0.5 }}>
+              AVISO DO ORGANIZADOR
+            </span>
+          </div>
+          <p style={{ fontSize: 14, color: "var(--text)", margin: 0, lineHeight: 1.5, fontWeight: 500 }}>
+            {event.body}
+          </p>
+        </>
       )}
 
       {/* Timestamp */}

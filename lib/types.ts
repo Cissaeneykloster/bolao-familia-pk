@@ -53,15 +53,17 @@ export interface Group {
   games: { t: string }[];
 }
 
-export type FeedType = "exact" | "result" | "sent" | "winner";
+export type FeedType = "exact" | "result" | "sent" | "winner" | "challenge" | "announcement";
 
 export interface FeedEvent {
+  id: string;           // uuid para identificação única
   type: FeedType;
-  age: number;
+  timestamp: number;    // Date.now() quando ocorreu
   body: string;
   pts?: string;
   score?: { a: string; sa: number; sb: number; b: string };
   stats?: string[];
+  emoji?: string;       // para anúncios personalizados
 }
 
 export interface DesafioCat {

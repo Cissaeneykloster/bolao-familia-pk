@@ -54,12 +54,27 @@ export function SorteioDoDia() {
   }, [setDraw, fire, show]);
 
   // ── Marcar como feito ────────────────────────────────────────
+  const { addFeedEvent } = useBolao();
+
   const handleMark = useCallback((done: boolean) => {
     if (!draw || !windowOpen) return;
     markChallengeDone(done);
-    if (done) { fire(); show("✅ Desafio marcado! Pontos garantidos."); }
-    else show("❌ Desmarcado.");
-  }, [draw, windowOpen, markChallengeDone, fire, show]);
+    if (done) {
+      fire();
+      show("✅ Desafio marcado! Pontos garantidos.");
+      const cat = DESAFIO_CATS.find((c) => c.id === draw.area);
+      if (cat) {
+        addFeedEvent({
+          type: "challenge",
+          emoji: cat.icon,
+          body: `Desafio ${challengeCode(draw.area, draw.itemIdx)} concluído — ${cat.items[draw.itemIdx]}`,
+          pts: `+${cat.pts} pts`,
+        });
+      }
+    } else {
+      show("❌ Desmarcado.");
+    }
+  }, [draw, windowOpen, markChallengeDone, fire, show, addFeedEvent]);
 
   // Dados do desafio
   const cat = draw ? DESAFIO_CATS.find((c) => c.id === draw.area) : null;
