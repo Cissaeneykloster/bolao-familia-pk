@@ -26,6 +26,9 @@ interface BolaoState {
   // Grupo ativo (persiste — cada dispositivo sabe a qual grupo pertence)
   currentGrupoId: string | null;
 
+  // Identidade do participante (salva do link de acesso)
+  currentUserApelido: string | null;
+
   // Feed (gerado automaticamente + anúncios do admin)
   feedEvents: FeedEvent[];
 
@@ -67,6 +70,7 @@ interface BolaoState {
   toggleLive: () => void;
   setScreen: (s: Screen) => void;
   setCurrentGrupo: (id: string | null) => void;
+  setCurrentUserApelido: (apelido: string | null) => void;
 
   setGuess: (id: string, side: "a" | "b", dir: 1 | -1) => void;
   saveGuess: (id: string) => void;
@@ -116,6 +120,7 @@ const initialState = {
   live: true,
   current: "ranking" as Screen,
   currentGrupoId: null as string | null,
+  currentUserApelido: null as string | null,
 
   feedEvents: [],
   groupPredictions: {},
@@ -155,6 +160,7 @@ export const useBolao = create<BolaoState>()(
       toggleLive: () => set((s) => ({ live: !s.live })),
       setScreen: (s) => set({ current: s }),
       setCurrentGrupo: (id) => set({ currentGrupoId: id }),
+      setCurrentUserApelido: (apelido) => set({ currentUserApelido: apelido }),
 
       setGuess: (id, side, dir) =>
         set((state) => {

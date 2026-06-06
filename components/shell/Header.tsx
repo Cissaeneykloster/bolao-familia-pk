@@ -6,7 +6,7 @@ import { bonusPts } from "@/lib/scoring";
 import { DESAFIO_CATS, MATCHES, ADMINS } from "@/lib/mock-data";
 
 export function Header() {
-  const { desafios, comboBank, penalty, participantes, currentGrupoId } = useBolao();
+  const { desafios, comboBank, penalty, participantes, currentGrupoId, currentUserApelido } = useBolao();
   const bonus = bonusPts(desafios, DESAFIO_CATS, comboBank, penalty);
   const totalPts = bonus;
 
@@ -77,17 +77,17 @@ export function Header() {
         </span>
       )}
 
-      {/* Grupo ativo + contador */}
+      {/* Identidade do usuário + grupo */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
+        {currentUserApelido && (
+          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
+            {currentUserApelido}
+          </span>
+        )}
         {grupoCfg ? (
-          <>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--neon)" }}>
-              {grupoCfg.emoji} {grupoCfg.nomeGrupo}
-            </span>
-            <span style={{ fontSize: 10, color: "var(--muted)" }}>
-              {qtd} participante{qtd !== 1 ? "s" : ""}
-            </span>
-          </>
+          <span style={{ fontSize: 11, color: "var(--neon)" }}>
+            {grupoCfg.emoji} {grupoCfg.nomeGrupo}
+          </span>
         ) : (
           <span style={{ fontSize: 11, color: "var(--muted)", fontStyle: "italic" }}>
             Sem grupo

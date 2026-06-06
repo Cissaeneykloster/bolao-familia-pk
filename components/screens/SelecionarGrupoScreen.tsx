@@ -65,7 +65,8 @@ export function SelecionarGrupoScreen() {
       </div>
 
       <p style={{ fontSize: 11, color: "var(--muted)", textAlign: "center", maxWidth: 280 }}>
-        Se você recebeu um link pelo WhatsApp, clique nele para entrar direto no seu grupo.
+        Se você recebeu um link pelo WhatsApp, clique nele para entrar direto com seu nome.
+        Aqui você pode escolher o grupo manualmente.
       </p>
     </div>
   );

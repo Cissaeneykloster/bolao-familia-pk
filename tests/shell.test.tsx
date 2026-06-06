@@ -55,13 +55,13 @@ describe("Header", () => {
     expect(screen.getByText(/sem grupo/i)).toBeInTheDocument();
   });
 
-  it("com 1 participante mostra '1 participante'", () => {
+  it("com apelido definido mostra o nome do usuário", () => {
     useBolao.setState({
-      participantes: [{ id: "1", grupoId: "pk", nome: "Ney", apelido: "Ney", email: "", telefone: "", token: "t1", ativo: true }],
       currentGrupoId: "pk",
+      currentUserApelido: "Ney",
     });
     render(<Header />);
-    expect(screen.getByText(/1 participante/i)).toBeInTheDocument();
+    expect(screen.getByText("Ney")).toBeInTheDocument();
   });
 
   it("renderiza o header sem erros", () => {

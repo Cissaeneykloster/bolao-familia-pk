@@ -232,16 +232,19 @@ function TabParticipantes() {
   const handleAdd = () => {
     if (!form.nome || !form.apelido || !adminGrupoId) return;
     const p = addParticipante({ ...form, grupoId: adminGrupoId });
-    // Link usa o grupoId (funciona sem Supabase; com Supabase usará token)
+    // Link inclui o apelido para personalizar a tela de entrada
     const origin = typeof window !== "undefined" ? window.location.origin : "https://bolao-familia-pk.vercel.app";
-    const link = `${origin}/entrar/${adminGrupoId}`;
+    const link = `${origin}/entrar/${adminGrupoId}?p=${encodeURIComponent(p.apelido)}`;
     setNovoLink({ nome: p.nome, link });
     setForm({ nome: "", apelido: "", email: "", telefone: "" });
   };
 
   const copyLink = (_token: string, id: string) => {
     const origin = window.location.origin;
-    const link = `${origin}/entrar/${adminGrupoId}`;
+    const p = meusPart.find((x) => x.id === id);
+    const link = p
+      ? `${origin}/entrar/${adminGrupoId}?p=${encodeURIComponent(p.apelido)}`
+      : `${origin}/entrar/${adminGrupoId}`;
     navigator.clipboard.writeText(link);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
