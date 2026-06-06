@@ -130,7 +130,7 @@ const initialState = {
   card: "a" as const,
   palpite: "a" as const,
   sound: true,
-  live: true,
+  live: false,
   current: "ranking" as Screen,
   currentGrupoId: null as string | null,
   currentUserApelido: null as string | null,
