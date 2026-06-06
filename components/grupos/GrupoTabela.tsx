@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import type { Group } from "@/lib/types";
+import { useBolao } from "@/lib/store";
+import { MATCHES } from "@/lib/mock-data";
+import { calcGroupStandings } from "@/lib/standings";
 
 interface GrupoTabelaProps {
   group: Group;
@@ -9,6 +12,16 @@ interface GrupoTabelaProps {
 
 export function GrupoTabela({ group }: GrupoTabelaProps) {
   const [open, setOpen] = useState(false);
+  const { resultFix } = useBolao();
+
+  // Classificação calculada dinamicamente a partir dos resultados reais
+  const standings = calcGroupStandings(group, MATCHES, resultFix);
+  const jogosEncerrados = MATCHES.filter(
+    (m) => m.group === group.name && m.phase === "grupos" && m.status === "finished"
+  ).length;
+  const totalJogos = MATCHES.filter(
+    (m) => m.group === group.name && m.phase === "grupos"
+  ).length;
 
   return (
     <div style={{
@@ -35,9 +48,14 @@ export function GrupoTabela({ group }: GrupoTabelaProps) {
           borderBottom: open ? "1px solid var(--border)" : "none",
         }}
       >
-        <span className="font-bebas" style={{ fontSize: 20, color: "var(--neon)", letterSpacing: 1 }}>
-          {group.name}
-        </span>
+        <div>
+          <span className="font-bebas" style={{ fontSize: 20, color: "var(--neon)", letterSpacing: 1 }}>
+            {group.name}
+          </span>
+          <p style={{ fontSize: 10, color: "var(--muted)", margin: 0 }}>
+            {jogosEncerrados > 0 ? `${jogosEncerrados}/${totalJogos} jogos realizados` : "Aguardando início"}
+          </p>
+        </div>
         <span style={{ color: "var(--muted)", fontSize: 16, transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>
           ▾
         </span>
@@ -60,9 +78,9 @@ export function GrupoTabela({ group }: GrupoTabelaProps) {
             </tr>
           </thead>
           <tbody>
-            {group.teams.map((team, i) => {
+            {standings.map((team, i) => {
               const advances = i < 2;
-              const eliminated = i >= 2 && group.teams.filter((_, j) => j < 2).every(t => t.pts > team.pts);
+              const eliminated = i >= 2 && standings.slice(0, 2).every(t => t.pts > team.pts);
               return (
                 <tr
                   key={team.name}

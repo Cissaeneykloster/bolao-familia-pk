@@ -15,8 +15,9 @@ describe("GrupoTabela", () => {
 
   it("times aparecem na tabela", () => {
     render(<GrupoTabela group={grupoA} />);
-    expect(screen.getByText("Brasil")).toBeInTheDocument();
-    expect(screen.getByText("Argentina")).toBeInTheDocument();
+    // Grupo A real: México, África do Sul, Coreia do Sul, Rep. Tcheca
+    expect(screen.getByText("México")).toBeInTheDocument();
+    expect(screen.getByText("África do Sul")).toBeInTheDocument();
   });
 
   it("expande ao clicar no cabeçalho e mostra 'classificam'", async () => {
@@ -37,12 +38,12 @@ describe("GrupoTabela", () => {
     expect(btn.getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("palpite de classificação com predResult=ok mostra pontos", async () => {
+  it("palpite de classificação com predResult=wait mostra 'em aberto'", async () => {
     const user = userEvent.setup();
     render(<GrupoTabela group={grupoA} />);
     await user.click(screen.getByRole("button", { name: /grupo a/i }));
-    expect(screen.getByText(/\+15 pts/)).toBeInTheDocument();
-    expect(screen.getByText(/\+10 pts/)).toBeInTheDocument();
+    // Todos os grupos começam com predResult="wait"
+    expect(screen.getAllByText(/em aberto/i).length).toBeGreaterThan(0);
   });
 
   it("palpite de grupo B (wait) mostra 'em aberto'", async () => {

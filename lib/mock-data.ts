@@ -494,46 +494,156 @@ export const SCORING: ScoringRule[] = [
   { key: "golsB",  label: "Gols time B",       pts: 2  },
 ];
 
-// ── Grupos ───────────────────────────────────────────────────────
+// ── Times base de cada grupo (zerado — calculado dinamicamente) ────
+function z(name: string, flag: string): import("./types").GroupTeam {
+  return { name, flag, j: 0, v: 0, e: 0, d: 0, sg: 0, pts: 0 };
+}
+
+// ── Grupos da Copa 2026 (todos os 12) — começam zerados ───────────
 export const GROUPS: Group[] = [
   {
     name: "Grupo A",
     teams: [
-      { name: "Brasil",    flag: ENG.BRA, j: 2, v: 2, e: 0, d: 0, sg: 4,  pts: 6 },
-      { name: "Argentina", flag: ENG.ARG, j: 2, v: 1, e: 0, d: 1, sg: 1,  pts: 3 },
-      { name: "México",    flag: ENG.MEX, j: 2, v: 0, e: 1, d: 1, sg: -1, pts: 1 },
-      { name: "Canadá",    flag: ENG.CAN, j: 2, v: 0, e: 1, d: 1, sg: -4, pts: 1 },
+      z("México",        ENG.MEX),
+      z("África do Sul", F.RSA),
+      z("Coreia do Sul", ENG.KOR),
+      z("Rep. Tcheca",   F.CZE),
     ],
-    pred: { first: "Brasil", second: "Argentina" },
-    predResult: "ok",
-    predPts: 25,
-    games: [{ t: "Brasil × Argentina" }, { t: "México × Canadá" }],
+    pred: { first: "México", second: "Coreia do Sul" },
+    predResult: "wait", predPts: 0,
+    games: [{ t: "México × África do Sul" }, { t: "Coreia do Sul × Rep. Tcheca" }],
   },
   {
     name: "Grupo B",
     teams: [
-      { name: "França",      flag: ENG.FRA, j: 2, v: 1, e: 1, d: 0, sg: 1,  pts: 4 },
-      { name: "Inglaterra",  flag: ENG.ING, j: 2, v: 1, e: 1, d: 0, sg: 1,  pts: 4 },
-      { name: "Austrália",   flag: ENG.AUS, j: 2, v: 0, e: 1, d: 1, sg: 0,  pts: 1 },
-      { name: "Dinamarca",   flag: ENG.DEN, j: 2, v: 0, e: 1, d: 1, sg: -2, pts: 1 },
+      z("Canadá",       ENG.CAN),
+      z("Bósnia-Herz.", F.BIH),
+      z("Qatar",        F.QAT),
+      z("Suíça",        F.SUI),
     ],
-    pred: { first: "França", second: "Inglaterra" },
-    predResult: "wait",
-    predPts: 0,
-    games: [{ t: "França × Inglaterra" }, { t: "Austrália × Dinamarca" }],
+    pred: { first: "Canadá", second: "Suíça" },
+    predResult: "wait", predPts: 0,
+    games: [{ t: "Canadá × Bósnia-Herz." }, { t: "Qatar × Suíça" }],
   },
   {
     name: "Grupo C",
     teams: [
-      { name: "Alemanha", flag: ENG.GER, j: 1, v: 1, e: 0, d: 0, sg: 3,  pts: 3 },
-      { name: "Portugal", flag: ENG.POR, j: 1, v: 0, e: 1, d: 0, sg: 0,  pts: 1 },
-      { name: "Irã",      flag: ENG.IRN, j: 1, v: 0, e: 1, d: 0, sg: 0,  pts: 1 },
-      { name: "Japão",    flag: ENG.JPN, j: 1, v: 0, e: 0, d: 1, sg: -3, pts: 0 },
+      z("Brasil",   ENG.BRA),
+      z("Marrocos", "🇲🇦"),
+      z("Haiti",    F.HAI),
+      z("Escócia",  F.SCO),
     ],
-    pred: { first: "Alemanha", second: "Portugal" },
-    predResult: "wait",
-    predPts: 0,
-    games: [{ t: "Alemanha × Japão" }, { t: "Portugal × Irã" }],
+    pred: { first: "Brasil", second: "Marrocos" },
+    predResult: "wait", predPts: 0,
+    games: [{ t: "Brasil × Marrocos" }, { t: "Haiti × Escócia" }],
+  },
+  {
+    name: "Grupo D",
+    teams: [
+      z("EUA",       ENG.USA),
+      z("Paraguai",  F.PAR),
+      z("Austrália", F.AUS),
+      z("Turquia",   F.TUR),
+    ],
+    pred: { first: "EUA", second: "Turquia" },
+    predResult: "wait", predPts: 0,
+    games: [{ t: "EUA × Paraguai" }, { t: "Austrália × Turquia" }],
+  },
+  {
+    name: "Grupo E",
+    teams: [
+      z("Alemanha",      ENG.GER),
+      z("Curaçao",       F.CUW),
+      z("C. do Marfim",  F.CIV),
+      z("Equador",       F.ECU),
+    ],
+    pred: { first: "Alemanha", second: "Equador" },
+    predResult: "wait", predPts: 0,
+    games: [{ t: "Alemanha × Curaçao" }, { t: "C. do Marfim × Equador" }],
+  },
+  {
+    name: "Grupo F",
+    teams: [
+      z("Holanda",  F.NED),
+      z("Japão",    ENG.JPN),
+      z("Suécia",   F.SWE),
+      z("Tunísia",  F.TUN),
+    ],
+    pred: { first: "Holanda", second: "Japão" },
+    predResult: "wait", predPts: 0,
+    games: [{ t: "Holanda × Japão" }, { t: "Suécia × Tunísia" }],
+  },
+  {
+    name: "Grupo G",
+    teams: [
+      z("Bélgica",      F.BEL),
+      z("Egito",        F.EGY),
+      z("Irã",          ENG.IRN),
+      z("Nova Zelândia", F.NZL),
+    ],
+    pred: { first: "Bélgica", second: "Irã" },
+    predResult: "wait", predPts: 0,
+    games: [{ t: "Bélgica × Egito" }, { t: "Irã × Nova Zelândia" }],
+  },
+  {
+    name: "Grupo H",
+    teams: [
+      z("Espanha",        F.ESP),
+      z("Cabo Verde",     F.CPV),
+      z("Arábia Saudita", F.KSA),
+      z("Uruguai",        F.URU),
+    ],
+    pred: { first: "Espanha", second: "Uruguai" },
+    predResult: "wait", predPts: 0,
+    games: [{ t: "Espanha × Cabo Verde" }, { t: "Arábia Saudita × Uruguai" }],
+  },
+  {
+    name: "Grupo I",
+    teams: [
+      z("França",   ENG.FRA),
+      z("Senegal",  F.SEN),
+      z("Iraque",   F.IRQ),
+      z("Noruega",  F.NOR),
+    ],
+    pred: { first: "França", second: "Noruega" },
+    predResult: "wait", predPts: 0,
+    games: [{ t: "França × Senegal" }, { t: "Iraque × Noruega" }],
+  },
+  {
+    name: "Grupo J",
+    teams: [
+      z("Argentina", ENG.ARG),
+      z("Argélia",   F.ALG),
+      z("Áustria",   F.AUT),
+      z("Jordânia",  F.JOR),
+    ],
+    pred: { first: "Argentina", second: "Áustria" },
+    predResult: "wait", predPts: 0,
+    games: [{ t: "Argentina × Argélia" }, { t: "Áustria × Jordânia" }],
+  },
+  {
+    name: "Grupo K",
+    teams: [
+      z("Portugal",     ENG.POR),
+      z("Rep. Congo",   F.COD),
+      z("Uzbequistão",  F.UZB),
+      z("Colômbia",     F.COL),
+    ],
+    pred: { first: "Portugal", second: "Colômbia" },
+    predResult: "wait", predPts: 0,
+    games: [{ t: "Portugal × Rep. Congo" }, { t: "Uzbequistão × Colômbia" }],
+  },
+  {
+    name: "Grupo L",
+    teams: [
+      z("Inglaterra", ENG.ING),
+      z("Croácia",    F.CRO),
+      z("Gana",       F.GHA),
+      z("Panamá",     F.PAN),
+    ],
+    pred: { first: "Inglaterra", second: "Croácia" },
+    predResult: "wait", predPts: 0,
+    games: [{ t: "Inglaterra × Croácia" }, { t: "Gana × Panamá" }],
   },
 ];
 
