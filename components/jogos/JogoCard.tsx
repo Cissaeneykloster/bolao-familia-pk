@@ -138,8 +138,8 @@ export function JogoCard({ match }: { match: Match }) {
         </div>
       </div>
 
-      {/* Info extra por status */}
-      {(effectiveStatus === "upcoming") && (
+      {/* Info extra — só mostra "Apostar" se não há resultado oficial */}
+      {effectiveStatus === "upcoming" && !hasOfficial && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           {match.training ? (
             <span style={{ fontSize: 12, color: "var(--warn)" }}>

@@ -332,13 +332,12 @@ function TabResultados() {
               ))}
               <div style={{ flex: 1 }} />
               <button
-                aria-label={`Salvar resultado ${m.id}`}
+                aria-label={isOfficial ? `Alterar resultado ${m.id}` : `Salvar resultado ${m.id}`}
                 onClick={() => {
-                  // Salva e calcula pontos para todos os participantes do grupo
                   saveResultAndCalcPts(m.id, draft, participantes, adminGrupoId ?? "", guesses, m.phase);
                   addFeedEvent({
                     type: "result",
-                    body: "Resultado confirmado",
+                    body: isOfficial ? "Resultado atualizado" : "Resultado confirmado",
                     score: { a: m.a.name, sa: draft.sa, sb: draft.sb, b: m.b.name },
                   });
                   setSaved(m.id);
@@ -346,10 +345,13 @@ function TabResultados() {
                 }}
                 style={{
                   padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 700,
-                  border: "none", background: "var(--field)", color: "var(--neon)", cursor: "pointer",
+                  border: `1px solid ${isOfficial ? "rgba(255,216,77,0.5)" : "transparent"}`,
+                  background: isOfficial ? "rgba(255,216,77,0.1)" : "var(--field)",
+                  color: isOfficial ? "var(--warn)" : "var(--neon)",
+                  cursor: "pointer",
                 }}
               >
-                💾 Salvar resultado
+                {isSaved ? "✅ Salvo!" : isOfficial ? "✏️ Alterar resultado" : "💾 Salvar resultado"}
               </button>
             </div>
           </div>

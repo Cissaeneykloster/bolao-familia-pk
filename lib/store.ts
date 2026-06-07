@@ -357,37 +357,44 @@ export const useBolao = create<BolaoState>()(
 
       saveResultAndCalcPts: (matchId, score, participantes, _grupoId, guesses, matchPhase) =>
         set((state) => {
-          // 1. Salva o resultado oficial (congela para todos os grupos)
-          const newResultFix = { ...state.resultFix, [matchId]: score };
-          const newOfficialResults = { ...state.officialResults, [matchId]: score };
-
-          // 2. Calcula pontos para TODOS os participantes ativos (ambos os grupos)
           const { breakdown: bkd } = require("./scoring");
-          const newMatchPts = { ...state.matchPts };
-
-          // Não recalcula se já existe resultado oficial (evita dupla contagem)
-          if (state.officialResults[matchId]) return {};
-
           const ativos = participantes.filter((p) => p.ativo);
 
-          for (const part of ativos) {
-            // Palpite salvo no store global (guesses) — chave: matchId
-            const g = state.guesses[matchId] ?? guesses[matchId];
+          // Se já existe resultado anterior, estorna os pontos antigos antes de recalcular
+          const newMatchPts = { ...state.matchPts };
+          const prevScore = state.officialResults[matchId];
 
+          if (prevScore) {
+            // Estorna pontos do resultado anterior
+            for (const part of ativos) {
+              const g = state.guesses[matchId] ?? guesses[matchId];
+              let oldPts: number;
+              if (g) {
+                const bd = bkd({ sa: prevScore.sa, sb: prevScore.sb }, { a: g.a, b: g.b }, matchPhase);
+                oldPts = bd.total;
+              } else {
+                oldPts = -3;
+              }
+              newMatchPts[part.apelido] = (newMatchPts[part.apelido] ?? 0) - oldPts;
+            }
+          }
+
+          // Calcula e aplica pontos do novo resultado
+          for (const part of ativos) {
+            const g = state.guesses[matchId] ?? guesses[matchId];
             let pts: number;
             if (g) {
               const bd = bkd({ sa: score.sa, sb: score.sb }, { a: g.a, b: g.b }, matchPhase);
               pts = bd.total;
             } else {
-              pts = -3; // sem palpite = -3 pts
+              pts = -3;
             }
-
             newMatchPts[part.apelido] = (newMatchPts[part.apelido] ?? 0) + pts;
           }
 
           return {
-            resultFix: newResultFix,
-            officialResults: newOfficialResults,
+            resultFix: { ...state.resultFix, [matchId]: score },
+            officialResults: { ...state.officialResults, [matchId]: score },
             matchPts: newMatchPts,
           };
         }),
