@@ -197,57 +197,68 @@ function TabPontos() {
 
 // ── Aba Palpites ─────────────────────────────────────────────────
 function TabPalpites() {
-  const { betFix, setBetFix } = useBolao();
-  const [drafts, setDrafts] = useState<Record<string, { a: number; b: number }>>({});
+  const { participantes, adminGrupoId, guesses, officialResults } = useBolao();
+  const meusPart = participantes.filter(
+    (p) => (p.grupoId === adminGrupoId || !p.grupoId) && p.ativo
+  );
 
-  const setDraft = (id: string, side: "a" | "b", dir: 1 | -1) => {
-    const prev = drafts[id] ?? { a: LOCKED_BETS.find(b => b.id === id)?.a ?? 0, b: LOCKED_BETS.find(b => b.id === id)?.b ?? 0 };
-    const next = Math.min(20, Math.max(0, prev[side] + dir));
-    setDrafts((d) => ({ ...d, [id]: { ...prev, [side]: next } }));
-  };
+  // Jogos com resultado oficial já lançado
+  const jogosComResultado = MATCHES.filter(
+    (m) => !m.training && officialResults[m.id]
+  ).sort((a, b) => (a.kickoff ?? 0) - (b.kickoff ?? 0));
+
+  if (jogosComResultado.length === 0) {
+    return (
+      <div style={{ textAlign: "center", padding: "32px 0", color: "var(--muted)", fontSize: 13 }}>
+        <p>Nenhum jogo com resultado oficial ainda.</p>
+        <p>Vá em ⚽ Resultados para lançar os placares.</p>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {LOCKED_BETS.map((bet) => {
-        const fixed = betFix[bet.id];
-        const draft = drafts[bet.id] ?? { a: bet.a, b: bet.b };
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
+        Palpites dos participantes nos jogos com resultado oficial.
+      </p>
+      {jogosComResultado.map((m) => {
+        const oficial = officialResults[m.id]!;
         return (
-          <div key={bet.id} style={{
-            padding: "12px 14px", background: "var(--bg-2)",
-            borderRadius: 10, border: "1px solid var(--border)",
-            display: "flex", flexDirection: "column", gap: 8,
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>{bet.match}</span>
-              {fixed && (
-                <span style={{ fontSize: 10, background: "rgba(255,216,77,0.1)", color: "var(--warn)", padding: "2px 6px", borderRadius: 4, fontWeight: 700 }}>
-                  corrigido
-                </span>
-              )}
+          <div key={m.id} style={{ background: "var(--bg-2)", borderRadius: "var(--radius)", border: "1px solid var(--border)", overflow: "hidden" }}>
+            {/* Cabeçalho do jogo */}
+            <div style={{ padding: "8px 12px", background: "var(--card)", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
+                {m.a.flag} {m.a.name} × {m.b.name} {m.b.flag}
+              </span>
+              <span className="font-bebas" style={{ fontSize: 18, color: "var(--neon)" }}>
+                {oficial.sa} × {oficial.sb}
+              </span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{bet.initials}</span>
-              <div style={{ flex: 1 }} />
-              {/* Stepper simples */}
-              {(["a", "b"] as const).map((side, si) => (
-                <span key={side} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  {si > 0 && <span style={{ color: "var(--muted)" }}>×</span>}
-                  <button onClick={() => setDraft(bet.id, side, -1)} style={{ width: 24, height: 24, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer" }}>−</button>
-                  <span className="font-bebas" style={{ fontSize: 20, color: "var(--neon)", minWidth: 20, textAlign: "center" }}>{draft[side]}</span>
-                  <button onClick={() => setDraft(bet.id, side, 1)} style={{ width: 24, height: 24, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer" }}>+</button>
-                </span>
-              ))}
-              <button
-                aria-label={`Salvar palpite ${bet.id}`}
-                onClick={() => setBetFix(bet.id, draft)}
-                style={{
-                  padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700,
-                  border: "none", background: "var(--field)", color: "var(--neon)", cursor: "pointer",
-                }}
-              >
-                Salvar
-              </button>
-            </div>
+            {/* Palpites */}
+            {meusPart.map((p) => {
+              const g = guesses[m.id];
+              const temPalpite = !!g;
+              return (
+                <div key={p.id} style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "6px 12px", borderBottom: "1px solid var(--border)",
+                }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--field)", color: "var(--neon)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+                    {p.apelido.slice(0, 2).toUpperCase()}
+                  </div>
+                  <span style={{ flex: 1, fontSize: 12, color: "var(--text)" }}>{p.apelido}</span>
+                  {temPalpite ? (
+                    <span className="font-bebas" style={{ fontSize: 16, color: "var(--neon)" }}>
+                      {g.a} × {g.b}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: 12, color: "var(--danger)", fontStyle: "italic" }}>
+                      sem palpite (−3)
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         );
       })}
@@ -257,12 +268,11 @@ function TabPalpites() {
 
 // ── Aba Resultados ───────────────────────────────────────────────
 function TabResultados() {
-  const { resultFix, setResultFix, saveResultAndCalcPts, addFeedEvent, participantes, adminGrupoId, guesses } = useBolao();
+  const { resultFix, setResultFix, saveResultAndCalcPts, addFeedEvent, participantes, adminGrupoId, guesses, officialResults } = useBolao();
   const [drafts, setDrafts] = useState<Record<string, { sa: number; sb: number }>>({});
   const [saved, setSaved] = useState<string | null>(null);
-  // Todos os jogos (excluindo amistosos de treino) ordenados por data
+  // TODOS os jogos ordenados por data (incluindo treinos)
   const allMatches = [...MATCHES]
-    .filter((m) => !m.training)
     .sort((a, b) => (a.kickoff ?? 0) - (b.kickoff ?? 0));
 
   const setDraft = (id: string, side: "sa" | "sb", dir: 1 | -1) => {
@@ -279,26 +289,32 @@ function TabResultados() {
         Participantes sem palpite recebem <strong style={{ color: "var(--danger)" }}>−3 pts</strong>.
       </p>
       {allMatches.map((m) => {
-        const fixed = resultFix[m.id];
+        const official = officialResults[m.id];
+        const fixed = official ?? resultFix[m.id];
         const draft = drafts[m.id] ?? { sa: fixed?.sa ?? 0, sb: fixed?.sb ?? 0 };
         const isSaved = saved === m.id;
+        const isOfficial = !!official;
         return (
           <div key={m.id} style={{
-            padding: "10px 12px", background: "var(--bg-2)",
+            padding: "10px 12px",
+            background: isOfficial ? "rgba(0,255,135,0.04)" : m.training ? "rgba(255,216,77,0.04)" : "var(--bg-2)",
             borderRadius: 10,
-            border: `1px solid ${isSaved ? "var(--neon)55" : fixed ? "rgba(255,216,77,0.3)" : "var(--border)"}`,
+            border: `1px solid ${isSaved ? "var(--neon)55" : isOfficial ? "rgba(0,255,135,0.3)" : "var(--border)"}`,
             display: "flex", flexDirection: "column", gap: 6,
           }}>
             {/* Linha de info */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12, color: "var(--text)", fontWeight: 600 }}>
-                {m.a.flag} {m.a.name} × {m.b.name} {m.b.flag}
-              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                {m.training && <span style={{ fontSize: 9, fontWeight: 700, color: "var(--warn)", background: "rgba(255,216,77,0.15)", padding: "1px 5px", borderRadius: 4 }}>TREINO</span>}
+                <span style={{ fontSize: 12, color: "var(--text)", fontWeight: 600 }}>
+                  {m.a.flag} {m.a.name} × {m.b.name} {m.b.flag}
+                </span>
+              </div>
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 {m.label && <span style={{ fontSize: 10, color: "var(--muted)" }}>{m.label}</span>}
-                {fixed && !isSaved && (
-                  <span style={{ fontSize: 10, background: "rgba(255,216,77,0.1)", color: "var(--warn)", padding: "2px 6px", borderRadius: 4, fontWeight: 700 }}>
-                    {fixed.sa} × {fixed.sb}
+                {isOfficial && !isSaved && (
+                  <span style={{ fontSize: 10, background: "rgba(0,255,135,0.1)", color: "var(--neon)", padding: "2px 6px", borderRadius: 4, fontWeight: 700 }}>
+                    ✅ {official!.sa} × {official!.sb}
                   </span>
                 )}
                 {isSaved && <span style={{ fontSize: 10, color: "var(--neon)", fontWeight: 700 }}>✅ Salvo!</span>}

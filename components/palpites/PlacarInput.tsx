@@ -133,14 +133,19 @@ function Preview({ gA, gB }: { gA: number; gB: number }) {
 }
 
 export function PlacarInput({ match, onSaved }: PlacarInputProps) {
-  const { guesses, setGuess, saveGuess, palpite } = useBolao();
+  const { guesses, setGuess, saveGuess, palpite, officialResults } = useBolao();
   const [saved, setSaved] = useState(false);
   const guess = guesses[match.id] ?? { a: 0, b: 0 };
+
+  // Resultado oficial lançado pelo admin → jogo congelado para todos
+  const officialResult = match.training ? undefined : officialResults[match.id];
+  const frozen = !!officialResult;
 
   // Reset saved state quando o palpite mudar
   useEffect(() => { setSaved(false); }, [guess.a, guess.b]);
 
   const handleSave = () => {
+    if (frozen) return;
     saveGuess(match.id);
     setSaved(true);
     onSaved?.();
@@ -151,18 +156,26 @@ export function PlacarInput({ match, onSaved }: PlacarInputProps) {
 
   return (
     <div style={{
-      background: "var(--card)",
+      background: frozen ? "var(--bg-2)" : "var(--card)",
       borderRadius: "var(--radius)",
-      border: "1px solid var(--border)",
+      border: `1px solid ${frozen ? "rgba(255,90,90,0.3)" : "var(--border)"}`,
       padding: 16,
       display: "flex",
       flexDirection: "column",
       gap: 12,
+      opacity: frozen ? 0.85 : 1,
     }}>
       {/* Cabeçalho */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontSize: 11, color: "var(--muted)" }}>{match.group}</span>
-        <span style={{ fontSize: 11, color: "var(--muted)" }}>{match.label}</span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {frozen && (
+            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--danger)", background: "rgba(255,90,90,0.1)", padding: "2px 8px", borderRadius: 10 }}>
+              🔒 RESULTADO OFICIAL: {officialResult!.sa} × {officialResult!.sb}
+            </span>
+          )}
+          <span style={{ fontSize: 11, color: "var(--muted)" }}>{match.label}</span>
+        </div>
       </div>
 
       {/* Times + steppers */}
@@ -182,6 +195,7 @@ export function PlacarInput({ match, onSaved }: PlacarInputProps) {
             value={guess.a}
             onInc={() => setGuess(match.id, "a", 1)}
             onDec={() => setGuess(match.id, "a", -1)}
+            disabled={frozen}
             side="a"
             size={size}
           />
@@ -200,6 +214,7 @@ export function PlacarInput({ match, onSaved }: PlacarInputProps) {
             value={guess.b}
             onInc={() => setGuess(match.id, "b", 1)}
             onDec={() => setGuess(match.id, "b", -1)}
+            disabled={frozen}
             side="b"
             size={size}
           />
@@ -211,14 +226,15 @@ export function PlacarInput({ match, onSaved }: PlacarInputProps) {
 
       {/* Botão salvar */}
       <button
-        aria-label={saved ? "Palpite salvo" : "Salvar palpite"}
+        aria-label={frozen ? "Palpite congelado" : saved ? "Palpite salvo" : "Salvar palpite"}
         onClick={handleSave}
+        disabled={frozen}
         style={{
           width: "100%",
           padding: "12px 0",
           borderRadius: 10,
           border: "none",
-          background: saved ? "var(--field-light)" : "var(--field)",
+          background: frozen ? "var(--border)" : saved ? "var(--field-light)" : "var(--field)",
           color: "var(--neon)",
           fontWeight: 700,
           fontSize: 14,
@@ -227,7 +243,7 @@ export function PlacarInput({ match, onSaved }: PlacarInputProps) {
           minHeight: 44,
         }}
       >
-        {saved ? "✅ Salvo!" : "💾 Salvar palpite"}
+        {frozen ? "🔒 Resultado oficial lançado" : saved ? "✅ Salvo!" : "💾 Salvar palpite"}
       </button>
     </div>
   );

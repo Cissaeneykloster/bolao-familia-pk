@@ -64,6 +64,9 @@ interface BolaoState {
   // Pontos de partidas por participante (apelido → total acumulado)
   matchPts: Record<string, number>;
 
+  // Resultados oficiais lançados pelo admin — congela o jogo para todos
+  officialResults: Record<string, { sa: number; sb: number }>;
+
   // Dados compartilhados
   adminDelta: Record<string, number>;
   betFix: Record<string, { a: number; b: number }>;
@@ -154,6 +157,7 @@ const initialState = {
 
   desafioCatsByGroup: {},
   matchPts: {},
+  officialResults: {},
   feedEvents: [],
   groupPredictions: {},
   groupPredictionsSaved: false,
@@ -351,36 +355,41 @@ export const useBolao = create<BolaoState>()(
       setBetFix: (id, score) =>
         set((state) => ({ betFix: { ...state.betFix, [id]: score } })),
 
-      saveResultAndCalcPts: (matchId, score, participantes, grupoId, guesses, matchPhase) =>
+      saveResultAndCalcPts: (matchId, score, participantes, _grupoId, guesses, matchPhase) =>
         set((state) => {
-          // 1. Salva o resultado
+          // 1. Salva o resultado oficial (congela para todos os grupos)
           const newResultFix = { ...state.resultFix, [matchId]: score };
+          const newOfficialResults = { ...state.officialResults, [matchId]: score };
 
-          // 2. Calcula pontos para cada participante do grupo
+          // 2. Calcula pontos para TODOS os participantes ativos (ambos os grupos)
           const { breakdown: bkd } = require("./scoring");
           const newMatchPts = { ...state.matchPts };
 
-          const doGrupo = participantes.filter((p) => p.grupoId === grupoId && p.ativo);
+          // Não recalcula se já existe resultado oficial (evita dupla contagem)
+          if (state.officialResults[matchId]) return {};
 
-          for (const part of doGrupo) {
-            // Palpite do participante para esta partida
-            // Palpites ficam em guesses (por dispositivo) — aqui usamos os do store
-            const g = guesses[matchId] ?? state.guesses[matchId];
+          const ativos = participantes.filter((p) => p.ativo);
+
+          for (const part of ativos) {
+            // Palpite salvo no store global (guesses) — chave: matchId
+            const g = state.guesses[matchId] ?? guesses[matchId];
 
             let pts: number;
             if (g) {
-              // Tem palpite: calcula normalmente
               const bd = bkd({ sa: score.sa, sb: score.sb }, { a: g.a, b: g.b }, matchPhase);
               pts = bd.total;
             } else {
-              // Sem palpite: -3 pontos
-              pts = -3;
+              pts = -3; // sem palpite = -3 pts
             }
 
             newMatchPts[part.apelido] = (newMatchPts[part.apelido] ?? 0) + pts;
           }
 
-          return { resultFix: newResultFix, matchPts: newMatchPts };
+          return {
+            resultFix: newResultFix,
+            officialResults: newOfficialResults,
+            matchPts: newMatchPts,
+          };
         }),
 
       setResultFix: (id, score) =>
