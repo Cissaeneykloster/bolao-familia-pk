@@ -59,6 +59,11 @@ interface BolaoState {
   adminUnlocked: boolean;
   adminGrupoId: string | null;   // grupo do admin logado (sessão)
 
+  // Pontos de partidas por participante (apelido → total)
+  // Calculado quando admin salva resultado. Inclui -3 se sem palpite.
+  // Pontos de partidas por participante (apelido → total acumulado)
+  matchPts: Record<string, number>;
+
   // Dados compartilhados
   adminDelta: Record<string, number>;
   betFix: Record<string, { a: number; b: number }>;
@@ -113,6 +118,15 @@ interface BolaoState {
   setAdminDelta: (name: string, delta: number) => void;
   resetAdminDelta: (name: string) => void;
   setBetFix: (id: string, score: { a: number; b: number }) => void;
+  // Salva resultado E recalcula pontos de todos os participantes do grupo
+  saveResultAndCalcPts: (
+    matchId: string,
+    score: { sa: number; sb: number },
+    participantes: import("./mock-data").Participante[],
+    grupoId: string,
+    guesses: Record<string, { a: number; b: number }>,
+    matchPhase: import("./types").MatchPhase,
+  ) => void;
   setResultFix: (id: string, score: { sa: number; sb: number }) => void;
 
   // Participantes — scoped por grupo
@@ -139,6 +153,7 @@ const initialState = {
   currentUserApelido: null as string | null,
 
   desafioCatsByGroup: {},
+  matchPts: {},
   feedEvents: [],
   groupPredictions: {},
   groupPredictionsSaved: false,
@@ -335,6 +350,38 @@ export const useBolao = create<BolaoState>()(
 
       setBetFix: (id, score) =>
         set((state) => ({ betFix: { ...state.betFix, [id]: score } })),
+
+      saveResultAndCalcPts: (matchId, score, participantes, grupoId, guesses, matchPhase) =>
+        set((state) => {
+          // 1. Salva o resultado
+          const newResultFix = { ...state.resultFix, [matchId]: score };
+
+          // 2. Calcula pontos para cada participante do grupo
+          const { breakdown: bkd } = require("./scoring");
+          const newMatchPts = { ...state.matchPts };
+
+          const doGrupo = participantes.filter((p) => p.grupoId === grupoId && p.ativo);
+
+          for (const part of doGrupo) {
+            // Palpite do participante para esta partida
+            // Palpites ficam em guesses (por dispositivo) — aqui usamos os do store
+            const g = guesses[matchId] ?? state.guesses[matchId];
+
+            let pts: number;
+            if (g) {
+              // Tem palpite: calcula normalmente
+              const bd = bkd({ sa: score.sa, sb: score.sb }, { a: g.a, b: g.b }, matchPhase);
+              pts = bd.total;
+            } else {
+              // Sem palpite: -3 pontos
+              pts = -3;
+            }
+
+            newMatchPts[part.apelido] = (newMatchPts[part.apelido] ?? 0) + pts;
+          }
+
+          return { resultFix: newResultFix, matchPts: newMatchPts };
+        }),
 
       setResultFix: (id, score) =>
         set((state) => ({ resultFix: { ...state.resultFix, [id]: score } })),

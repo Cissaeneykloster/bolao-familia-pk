@@ -35,13 +35,13 @@ function PlayerAvatar({ player }: { player: Player }) {
 }
 
 export function RankingList() {
-  const { adminDelta, desafios, comboBank, penalty, participantes, currentGrupoId } = useBolao();
+  const { adminDelta, desafios, comboBank, penalty, participantes, currentGrupoId, matchPts } = useBolao();
   const DESAFIO_CATS = useDesafioCats();
   const bonus = bonusPts(desafios, DESAFIO_CATS, comboBank, penalty);
   const doGrupo = currentGrupoId
     ? participantes.filter((p) => p.grupoId === currentGrupoId && p.ativo)
     : participantes.filter((p) => p.ativo);
-  const players = participantesToPlayers(doGrupo, adminDelta);
+  const players = participantesToPlayers(doGrupo, adminDelta, matchPts);
   const ranked = rankWithEff(players, adminDelta, bonus);
   const rest = ranked.slice(3); // 4º em diante
   const maxEff = ranked.length > 0 ? effPts(ranked[0], adminDelta, bonus) : 1;

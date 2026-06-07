@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useBolao } from "@/lib/store";
 import { mScore } from "@/lib/scoring";
 import { MATCHES, GROUPS } from "@/lib/mock-data";
@@ -58,9 +58,11 @@ export function PalpitesScreen() {
     }
   };
 
-  const upcoming = MATCHES.filter((m) => m.status === "upcoming" && m.phase !== "amistoso");
-  const training = MATCHES.filter((m) => m.training);
-  const finished = MATCHES.filter((m) => m.status === "finished");
+  // Todos ordenados por data/hora
+  const sortedMatches = [...MATCHES].sort((a, b) => (a.kickoff ?? 0) - (b.kickoff ?? 0));
+  const upcoming = sortedMatches.filter((m) => m.status === "upcoming" && !m.training);
+  const training = sortedMatches.filter((m) => m.training);
+  const finished = sortedMatches.filter((m) => m.status === "finished" && !m.training);
 
   return (
     <div className="animate-screen-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -223,34 +225,60 @@ export function PalpitesScreen() {
                 {finished.map((m) => {
                   const g = guesses[m.id];
                   const actual = mScore(m, resultFix);
+                  const [expanded, setExpanded] = useState(false);
                   return (
                     <div key={m.id} style={{
                       background: "var(--bg-2)", borderRadius: "var(--radius)",
-                      border: "1px solid var(--border)", padding: 14,
-                      display: "flex", flexDirection: "column", gap: 8,
+                      border: "1px solid var(--border)", overflow: "hidden",
                     }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span style={{ fontSize: 13, color: "var(--text)", fontWeight: 600 }}>
+                      {/* Linha compacta — tudo em uma única linha */}
+                      <button
+                        onClick={() => setExpanded(!expanded)}
+                        style={{
+                          width: "100%", background: "none", border: "none", cursor: "pointer",
+                          padding: "8px 12px",
+                          display: "flex", alignItems: "center", gap: 8,
+                        }}
+                      >
+                        <span style={{ fontSize: 13, color: "var(--muted)", whiteSpace: "nowrap" }}>
+                          ENCERRADO
+                        </span>
+                        <span style={{ fontSize: 12, color: "var(--text)", flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {m.a.flag} {m.a.name}
                         </span>
-                        <span className="font-bebas" style={{ fontSize: 26, color: "var(--neon)" }}>
+                        <span className="font-bebas" style={{ fontSize: 18, color: "var(--neon)", flexShrink: 0 }}>
                           {actual.sa} × {actual.sb}
                         </span>
-                        <span style={{ fontSize: 13, color: "var(--text)", fontWeight: 600 }}>
+                        <span style={{ fontSize: 12, color: "var(--text)", flex: 1, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {m.b.name} {m.b.flag}
                         </span>
-                      </div>
-                      {g ? (
-                        <>
-                          <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
-                            Você apostou: <strong style={{ color: "var(--text)" }}>{g.a} × {g.b}</strong>
-                          </p>
-                          <Breakdown actual={actual} guess={g} compact />
-                        </>
-                      ) : (
-                        <p style={{ fontSize: 12, color: "var(--muted)", fontStyle: "italic" }}>
-                          Você não apostou nesse jogo.
-                        </p>
+                        {g ? (
+                          <span style={{ fontSize: 11, color: "var(--ok)", flexShrink: 0 }}>
+                            {g.a}×{g.b} ▾
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 11, color: "var(--danger)", flexShrink: 0 }}>
+                            −3pts ▾
+                          </span>
+                        )}
+                      </button>
+
+                      {/* Detalhe expandido */}
+                      {expanded && (
+                        <div style={{ padding: "0 12px 12px", borderTop: "1px solid var(--border)" }}>
+                          {g ? (
+                            <>
+                              <p style={{ fontSize: 12, color: "var(--muted)", margin: "8px 0 6px" }}>
+                                Você apostou: <strong style={{ color: "var(--text)" }}>{g.a} × {g.b}</strong>
+                              </p>
+                              <Breakdown actual={actual} guess={g} compact />
+                            </>
+                          ) : (
+                            <p style={{ fontSize: 12, color: "var(--danger)", margin: "8px 0 0", fontStyle: "italic" }}>
+                              Sem palpite para este jogo → −3 pontos no ranking.
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   );

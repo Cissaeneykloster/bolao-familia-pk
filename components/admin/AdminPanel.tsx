@@ -257,9 +257,13 @@ function TabPalpites() {
 
 // ── Aba Resultados ───────────────────────────────────────────────
 function TabResultados() {
-  const { resultFix, setResultFix, addFeedEvent } = useBolao();
+  const { resultFix, setResultFix, saveResultAndCalcPts, addFeedEvent, participantes, adminGrupoId, guesses } = useBolao();
   const [drafts, setDrafts] = useState<Record<string, { sa: number; sb: number }>>({});
-  const nonUpcoming = MATCHES.filter((m) => m.status !== "upcoming");
+  const [saved, setSaved] = useState<string | null>(null);
+  // Todos os jogos (excluindo amistosos de treino) ordenados por data
+  const allMatches = [...MATCHES]
+    .filter((m) => !m.training)
+    .sort((a, b) => (a.kickoff ?? 0) - (b.kickoff ?? 0));
 
   const setDraft = (id: string, side: "sa" | "sb", dir: 1 | -1) => {
     const m = MATCHES.find((x) => x.id === id)!;
@@ -270,25 +274,37 @@ function TabResultados() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {nonUpcoming.map((m) => {
+      <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
+        Informe o resultado de cada jogo. O sistema calculará os pontos automaticamente.
+        Participantes sem palpite recebem <strong style={{ color: "var(--danger)" }}>−3 pts</strong>.
+      </p>
+      {allMatches.map((m) => {
         const fixed = resultFix[m.id];
-        const draft = drafts[m.id] ?? { sa: m.sa ?? 0, sb: m.sb ?? 0 };
+        const draft = drafts[m.id] ?? { sa: fixed?.sa ?? 0, sb: fixed?.sb ?? 0 };
+        const isSaved = saved === m.id;
         return (
           <div key={m.id} style={{
-            padding: "12px 14px", background: "var(--bg-2)",
-            borderRadius: 10, border: "1px solid var(--border)",
-            display: "flex", flexDirection: "column", gap: 8,
+            padding: "10px 12px", background: "var(--bg-2)",
+            borderRadius: 10,
+            border: `1px solid ${isSaved ? "var(--neon)55" : fixed ? "rgba(255,216,77,0.3)" : "var(--border)"}`,
+            display: "flex", flexDirection: "column", gap: 6,
           }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>
+            {/* Linha de info */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 12, color: "var(--text)", fontWeight: 600 }}>
                 {m.a.flag} {m.a.name} × {m.b.name} {m.b.flag}
               </span>
-              {fixed && (
-                <span style={{ fontSize: 10, background: "rgba(255,216,77,0.1)", color: "var(--warn)", padding: "2px 6px", borderRadius: 4, fontWeight: 700 }}>
-                  corrigido
-                </span>
-              )}
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                {m.label && <span style={{ fontSize: 10, color: "var(--muted)" }}>{m.label}</span>}
+                {fixed && !isSaved && (
+                  <span style={{ fontSize: 10, background: "rgba(255,216,77,0.1)", color: "var(--warn)", padding: "2px 6px", borderRadius: 4, fontWeight: 700 }}>
+                    {fixed.sa} × {fixed.sb}
+                  </span>
+                )}
+                {isSaved && <span style={{ fontSize: 10, color: "var(--neon)", fontWeight: 700 }}>✅ Salvo!</span>}
+              </div>
             </div>
+            {/* Placar + botão */}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {(["sa", "sb"] as const).map((side, si) => (
                 <span key={side} style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -302,19 +318,22 @@ function TabResultados() {
               <button
                 aria-label={`Salvar resultado ${m.id}`}
                 onClick={() => {
-                  setResultFix(m.id, draft);
+                  // Salva e calcula pontos para todos os participantes do grupo
+                  saveResultAndCalcPts(m.id, draft, participantes, adminGrupoId ?? "", guesses, m.phase);
                   addFeedEvent({
                     type: "result",
                     body: "Resultado confirmado",
                     score: { a: m.a.name, sa: draft.sa, sb: draft.sb, b: m.b.name },
                   });
+                  setSaved(m.id);
+                  setTimeout(() => setSaved(null), 2000);
                 }}
                 style={{
-                  padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700,
+                  padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 700,
                   border: "none", background: "var(--field)", color: "var(--neon)", cursor: "pointer",
                 }}
               >
-                Salvar
+                💾 Salvar resultado
               </button>
             </div>
           </div>
