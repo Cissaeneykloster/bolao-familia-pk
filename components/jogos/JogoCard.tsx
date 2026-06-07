@@ -33,24 +33,31 @@ function MiniBreakdown({ match, guess }: { match: Match; guess: { a: number; b: 
 
 // ── Card principal ────────────────────────────────────────────────
 export function JogoCard({ match }: { match: Match }) {
-  const { guesses, resultFix, setScreen, card } = useBolao();
-  // Amistosos de treino: deadline = ano 2099 (nunca fecha)
-  const trainingDeadline = match.training ? new Date("2099-01-01").getTime() : undefined;
+  const { guesses, resultFix, setScreen, card, officialResults } = useBolao();
+  // Amistosos de treino: deadline = ano 2099 (nunca fecha) EXCETO se resultado oficial lançado
+  const hasOfficial = !!officialResults[match.id];
+  const trainingDeadline = (match.training && !hasOfficial) ? new Date("2099-01-01").getTime() : undefined;
   const countdown = useCountdown(match.training ? trainingDeadline : match.kickoff);
   const guess = guesses[match.id];
-  const actual = mScore(match, resultFix);
+
+  // Usa resultado oficial se existir, senão mScore normal
+  const official = officialResults[match.id];
+  const actual = official ?? mScore(match, resultFix);
+
+  // Status efetivo: se tem resultado oficial, trata como "finished"
+  const effectiveStatus = hasOfficial ? "finished" : match.status;
 
   const isCompact = card === "b";
   const isEstadio = card === "c";
 
   const baseStyle: React.CSSProperties = {
-    background: match.status === "live"
+    background: effectiveStatus === "live"
       ? "color-mix(in srgb, var(--live) 6%, var(--card))"
-      : match.status === "finished"
+      : effectiveStatus === "finished"
       ? "var(--bg-2)"
       : "var(--card)",
     borderRadius: "var(--radius)",
-    border: match.status === "live"
+    border: effectiveStatus === "live"
       ? "1px solid var(--live)"
       : "1px solid var(--border)",
     padding: isCompact ? "10px 12px" : "14px 16px",
@@ -71,7 +78,7 @@ export function JogoCard({ match }: { match: Match }) {
       {/* Cabeçalho: grupo + status */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontSize: 11, color: "var(--muted)" }}>{match.group}</span>
-        {match.status === "live" && (
+        {effectiveStatus === "live" && (
           <span className="animate-pisca" style={{
             fontSize: 11, fontWeight: 700, color: "var(--live)",
             background: "color-mix(in srgb, var(--live) 15%, transparent)",
@@ -80,17 +87,17 @@ export function JogoCard({ match }: { match: Match }) {
             🔴 AO VIVO {match.minute}&apos;
           </span>
         )}
-        {match.training && (
+        {match.training && !hasOfficial && (
           <span style={{ fontSize: 11, fontWeight: 700, color: "var(--warn)", background: "rgba(255,216,77,0.15)", padding: "2px 8px", borderRadius: 10 }}>
             🎯 TREINO
           </span>
         )}
-        {!match.training && match.status === "finished" && (
+        {effectiveStatus === "finished" && (
           <span style={{ fontSize: 11, color: "var(--muted)", background: "var(--border)", padding: "2px 8px", borderRadius: 10 }}>
-            ENCERRADO
+            {match.training ? "🎯 TREINO · ENCERRADO" : "ENCERRADO"}
           </span>
         )}
-        {match.status === "upcoming" && match.label && (
+        {effectiveStatus === "upcoming" && match.label && (
           <span style={{ fontSize: 11, color: "var(--muted)" }}>{match.label}</span>
         )}
       </div>
@@ -107,7 +114,7 @@ export function JogoCard({ match }: { match: Match }) {
 
         {/* Placar central */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {match.status !== "upcoming" ? (
+          {effectiveStatus !== "upcoming" ? (
             <>
               <span className="font-bebas" style={{ fontSize: isCompact ? 28 : 36, color: "var(--neon)", minWidth: 20, textAlign: "center" }}>
                 {actual.sa}
@@ -132,7 +139,7 @@ export function JogoCard({ match }: { match: Match }) {
       </div>
 
       {/* Info extra por status */}
-      {(match.status === "upcoming" || match.training) && (
+      {(effectiveStatus === "upcoming") && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           {match.training ? (
             <span style={{ fontSize: 12, color: "var(--warn)" }}>
@@ -157,24 +164,24 @@ export function JogoCard({ match }: { match: Match }) {
         </div>
       )}
 
-      {match.status === "live" && (
+      {effectiveStatus === "live" && (
         <p style={{ fontSize: 12, color: "var(--muted)", fontStyle: "italic" }}>
           Torcendo por você 🤞
         </p>
       )}
 
-      {match.status === "finished" && guess && (
+      {effectiveStatus === "finished" && guess && (
         <div>
           <p style={{ fontSize: 12, color: "var(--muted)" }}>
             Você apostou: <strong style={{ color: "var(--text)" }}>{guess.a} × {guess.b}</strong>
           </p>
-          <MiniBreakdown match={match} guess={guess} />
+          <MiniBreakdown match={{ ...match, sa: actual.sa, sb: actual.sb, status: "finished" }} guess={guess} />
         </div>
       )}
 
-      {match.status === "finished" && !guess && (
-        <p style={{ fontSize: 12, color: "var(--muted)", fontStyle: "italic" }}>
-          Você não apostou nesse jogo.
+      {effectiveStatus === "finished" && !guess && (
+        <p style={{ fontSize: 12, color: "var(--danger)", fontStyle: "italic" }}>
+          Sem palpite — {match.training ? "0 pts (treino não conta)" : "−3 pts no ranking"}
         </p>
       )}
     </div>

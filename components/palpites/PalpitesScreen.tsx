@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useBolao } from "@/lib/store";
 import { mScore } from "@/lib/scoring";
 import { MATCHES, GROUPS } from "@/lib/mock-data";
@@ -14,7 +14,7 @@ import { arePredictionsLocked, calcGroupPredictionPts } from "@/lib/standings";
 type Tab = "grupos" | "jogos";
 
 export function PalpitesScreen() {
-  const { guesses, resultFix, groupPredictions, groupPredictionsSaved, addFeedEvent } = useBolao();
+  const { guesses, resultFix, groupPredictions, groupPredictionsSaved, addFeedEvent, officialResults } = useBolao();
   const { show } = useToast();
   const { fire } = useConfetti();
 
@@ -183,9 +183,53 @@ export function PalpitesScreen() {
                 🎯 Treino (não conta no ranking)
               </h3>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {training.map((m) => (
-                  <PlacarInput key={m.id} match={m} onSaved={() => handleSaved(m.id)} />
-                ))}
+                {training.map((m) => {
+                  const official = officialResults[m.id];
+                  // Se tem resultado oficial → mostra breakdown, não o input
+                  if (official) {
+                    const g = guesses[m.id];
+                    return (
+                      <div key={m.id} style={{
+                        background: "var(--bg-2)", borderRadius: "var(--radius)",
+                        border: "1px solid rgba(0,255,135,0.2)", padding: 14,
+                        display: "flex", flexDirection: "column", gap: 8,
+                      }}>
+                        {/* Cabeçalho */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ fontSize: 12, color: "var(--text)", fontWeight: 600 }}>
+                            {m.a.flag} {m.a.name}
+                          </span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span className="font-bebas" style={{ fontSize: 22, color: "var(--neon)" }}>
+                              {official.sa} × {official.sb}
+                            </span>
+                            <span style={{ fontSize: 10, color: "var(--muted)", background: "var(--border)", padding: "2px 6px", borderRadius: 8 }}>
+                              🎯 TREINO · ENCERRADO
+                            </span>
+                          </div>
+                          <span style={{ fontSize: 12, color: "var(--text)", fontWeight: 600 }}>
+                            {m.b.name} {m.b.flag}
+                          </span>
+                        </div>
+                        {/* Resultado */}
+                        {g ? (
+                          <>
+                            <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
+                              Você apostou: <strong style={{ color: "var(--text)" }}>{g.a} × {g.b}</strong>
+                            </p>
+                            <Breakdown actual={{ sa: official.sa, sb: official.sb }} guess={g} compact />
+                          </>
+                        ) : (
+                          <p style={{ fontSize: 12, color: "var(--muted)", fontStyle: "italic" }}>
+                            Você não apostou neste treino.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  }
+                  // Sem resultado → input normal
+                  return <PlacarInput key={m.id} match={m} onSaved={() => handleSaved(m.id)} />;
+                })}
               </div>
             </section>
           )}

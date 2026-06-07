@@ -28,11 +28,11 @@ describe("AdminGate", () => {
     expect(screen.getByText(/incorretos/i)).toBeInTheDocument();
   });
 
-  it("Admin + Lelo desbloqueia e navega para admin", async () => {
+  it("Ney + 3015 desbloqueia e navega para admin (Família PK)", async () => {
     const user = userEvent.setup();
     render(<AdminGate open onClose={() => {}} />);
-    await user.type(screen.getByLabelText(/usuário/i), "Admin");
-    await user.type(screen.getByLabelText(/senha/i), "Lelo");
+    await user.type(screen.getByLabelText(/usuário/i), "Ney");
+    await user.type(screen.getByLabelText(/senha/i), "3015");
     await user.click(screen.getByRole("button", { name: /entrar/i }));
     expect(useBolao.getState().adminUnlocked).toBe(true);
     expect(useBolao.getState().current).toBe("admin");
@@ -46,8 +46,8 @@ describe("AdminGate", () => {
   it("Enter na senha também submete", async () => {
     const user = userEvent.setup();
     render(<AdminGate open onClose={() => {}} />);
-    await user.type(screen.getByLabelText(/usuário/i), "Admin");
-    await user.type(screen.getByLabelText(/senha/i), "Lelo{Enter}");
+    await user.type(screen.getByLabelText(/usuário/i), "Cissa");
+    await user.type(screen.getByLabelText(/senha/i), "3015{Enter}");
     expect(useBolao.getState().adminUnlocked).toBe(true);
   });
 });
@@ -87,9 +87,8 @@ describe("AdminPanel", () => {
 
   it("aba Pessoas: cadastra participante e aparece na lista", async () => {
     const user = userEvent.setup();
-    useBolao.setState({ adminUnlocked: true });
+    useBolao.setState({ adminUnlocked: true, adminGrupoId: "pk" });
     render(<AdminPanel />);
-    // Já começa na aba Pessoas
     await user.type(screen.getByPlaceholderText("Maria Silva"), "João Kloster");
     await user.type(screen.getByPlaceholderText("Mari"), "JoaoK");
     await user.click(screen.getByRole("button", { name: /cadastrar e gerar link/i }));
