@@ -326,13 +326,16 @@ function TabResultados() {
 
 // ── Aba Participantes ────────────────────────────────────────────
 function TabParticipantes() {
-  const { participantes, addParticipante, removeParticipante, toggleParticipanteAtivo, adminGrupoId, migrateParticipantes } = useBolao();
+  const { participantes, addParticipante, updateParticipante, removeParticipante, toggleParticipanteAtivo, adminGrupoId, migrateParticipantes } = useBolao();
   const [form, setForm] = useState({ nome: "", apelido: "", email: "", telefone: "" });
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [novoLink, setNovoLink] = useState<{ nome: string; link: string } | null>(null);
   const [importText, setImportText] = useState("");
   const [showImport, setShowImport] = useState(false);
   const [importados, setImportados] = useState(0);
+  // Edição inline
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ nome: "", apelido: "", email: "", telefone: "" });
 
   // Considera "sem grupo" tanto null, undefined, quanto string vazia
   const semGrupoId = (p: { grupoId?: string | null }) => !p.grupoId || p.grupoId === "";
@@ -578,64 +581,155 @@ function TabParticipantes() {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {meusPart.map((p) => (
-            <div key={p.id} style={{
-              background: p.ativo ? "var(--bg-2)" : "var(--bg)",
-              borderRadius: 10, border: "1px solid var(--border)",
-              padding: "10px 12px",
-              display: "flex", alignItems: "center", gap: 10,
-              opacity: p.ativo ? 1 : 0.5,
-            }}>
+            <div key={p.id} style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              {/* Linha principal */}
               <div style={{
-                width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
-                background: "var(--field)", color: "var(--neon)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 12, fontWeight: 700,
+                background: p.ativo ? "var(--bg-2)" : "var(--bg)",
+                borderRadius: editingId === p.id ? "10px 10px 0 0" : 10,
+                border: "1px solid var(--border)",
+                borderBottom: editingId === p.id ? "none" : "1px solid var(--border)",
+                padding: "10px 12px",
+                display: "flex", alignItems: "center", gap: 10,
+                opacity: p.ativo ? 1 : 0.5,
               }}>
-                {p.apelido.slice(0, 2).toUpperCase()}
+                <div style={{
+                  width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+                  background: "var(--field)", color: "var(--neon)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 12, fontWeight: 700,
+                }}>
+                  {p.apelido.slice(0, 2).toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", margin: 0 }}>{p.nome}</p>
+                  <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>
+                    @{p.apelido} · {p.email || "—"} · {p.telefone || "—"}
+                  </p>
+                </div>
+                {/* 🔗 Link */}
+                <button
+                  aria-label={`Copiar link de ${p.nome}`}
+                  onClick={() => copyLink(p.token, p.id)}
+                  style={{
+                    padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700,
+                    border: "1px solid var(--border)", background: "transparent",
+                    color: copiedId === p.id ? "var(--ok)" : "var(--muted)", cursor: "pointer",
+                  }}
+                >
+                  {copiedId === p.id ? "✅" : "🔗"}
+                </button>
+                {/* ✏️ Editar */}
+                <button
+                  aria-label={`Editar ${p.nome}`}
+                  onClick={() => {
+                    if (editingId === p.id) {
+                      setEditingId(null);
+                    } else {
+                      setEditingId(p.id);
+                      setEditForm({ nome: p.nome, apelido: p.apelido, email: p.email || "", telefone: p.telefone || "" });
+                    }
+                  }}
+                  style={{
+                    padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700,
+                    border: `1px solid ${editingId === p.id ? "var(--neon)" : "var(--border)"}`,
+                    background: editingId === p.id ? "var(--neon-soft)" : "transparent",
+                    color: editingId === p.id ? "var(--neon)" : "var(--muted)", cursor: "pointer",
+                  }}
+                >
+                  ✏️
+                </button>
+                {/* ⏸ Ativar/desativar */}
+                <button
+                  aria-label={p.ativo ? `Desativar ${p.nome}` : `Ativar ${p.nome}`}
+                  onClick={() => toggleParticipanteAtivo(p.id)}
+                  style={{
+                    padding: "4px 8px", borderRadius: 6, fontSize: 11,
+                    border: "1px solid var(--border)", background: "transparent",
+                    color: "var(--muted)", cursor: "pointer",
+                  }}
+                >
+                  {p.ativo ? "⏸" : "▶"}
+                </button>
+                {/* ✕ Remover */}
+                <button
+                  aria-label={`Remover ${p.nome}`}
+                  onClick={() => removeParticipante(p.id)}
+                  style={{
+                    padding: "4px 8px", borderRadius: 6, fontSize: 11,
+                    border: "1px solid rgba(255,90,90,0.27)", background: "transparent",
+                    color: "var(--danger)", cursor: "pointer",
+                  }}
+                >
+                  ✕
+                </button>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", margin: 0 }}>{p.nome}</p>
-                <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>
-                  @{p.apelido} · {p.email || "—"} · {p.telefone || "—"}
-                </p>
-              </div>
-              {/* Copiar link */}
-              <button
-                aria-label={`Copiar link de ${p.nome}`}
-                onClick={() => copyLink(p.token, p.id)}
-                title="Copiar link de acesso"
-                style={{
-                  padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700,
-                  border: "1px solid var(--border)", background: "transparent",
-                  color: copiedId === p.id ? "var(--ok)" : "var(--muted)", cursor: "pointer",
-                }}
-              >
-                {copiedId === p.id ? "✅ Copiado!" : "🔗 Link"}
-              </button>
-              {/* Ativar/desativar */}
-              <button
-                aria-label={p.ativo ? `Desativar ${p.nome}` : `Ativar ${p.nome}`}
-                onClick={() => toggleParticipanteAtivo(p.id)}
-                style={{
-                  padding: "4px 8px", borderRadius: 6, fontSize: 11,
-                  border: "1px solid var(--border)", background: "transparent",
-                  color: "var(--muted)", cursor: "pointer",
-                }}
-              >
-                {p.ativo ? "⏸" : "▶"}
-              </button>
-              {/* Remover */}
-              <button
-                aria-label={`Remover ${p.nome}`}
-                onClick={() => removeParticipante(p.id)}
-                style={{
-                  padding: "4px 8px", borderRadius: 6, fontSize: 11,
-                  border: "1px solid rgba(255,90,90,0.27)", background: "transparent",
-                  color: "var(--danger)", cursor: "pointer",
-                }}
-              >
-                ✕
-              </button>
+
+              {/* Formulário de edição inline */}
+              {editingId === p.id && (
+                <div style={{
+                  background: "var(--card)",
+                  border: "1px solid var(--neon)44",
+                  borderTop: "1px solid var(--border)",
+                  borderRadius: "0 0 10px 10px",
+                  padding: "12px 14px",
+                  display: "flex", flexDirection: "column", gap: 10,
+                }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <label style={{ fontSize: 12, color: "var(--muted)" }}>
+                      Nome completo
+                      <input
+                        value={editForm.nome}
+                        onChange={(e) => setEditForm((f) => ({ ...f, nome: e.target.value }))}
+                        style={{ display: "block", width: "100%", marginTop: 4, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--bg-2)", color: "var(--text)", fontSize: 13 }}
+                      />
+                    </label>
+                    <label style={{ fontSize: 12, color: "var(--muted)" }}>
+                      Apelido (ranking)
+                      <input
+                        value={editForm.apelido}
+                        onChange={(e) => setEditForm((f) => ({ ...f, apelido: e.target.value }))}
+                        style={{ display: "block", width: "100%", marginTop: 4, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--bg-2)", color: "var(--text)", fontSize: 13 }}
+                      />
+                    </label>
+                    <label style={{ fontSize: 12, color: "var(--muted)" }}>
+                      E-mail
+                      <input
+                        type="email"
+                        value={editForm.email}
+                        onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                        style={{ display: "block", width: "100%", marginTop: 4, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--bg-2)", color: "var(--text)", fontSize: 13 }}
+                      />
+                    </label>
+                    <label style={{ fontSize: 12, color: "var(--muted)" }}>
+                      Telefone
+                      <input
+                        type="tel"
+                        value={editForm.telefone}
+                        onChange={(e) => setEditForm((f) => ({ ...f, telefone: e.target.value }))}
+                        style={{ display: "block", width: "100%", marginTop: 4, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--bg-2)", color: "var(--text)", fontSize: 13 }}
+                      />
+                    </label>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer", fontSize: 13 }}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!editForm.apelido) return;
+                        updateParticipante(p.id, editForm);
+                        setEditingId(null);
+                      }}
+                      style={{ flex: 2, padding: "8px 0", borderRadius: 7, border: "none", background: "var(--field)", color: "var(--neon)", cursor: "pointer", fontWeight: 700, fontSize: 13 }}
+                    >
+                      ✅ Salvar alterações
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

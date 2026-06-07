@@ -117,6 +117,7 @@ interface BolaoState {
 
   // Participantes — scoped por grupo
   addParticipante: (p: Omit<Participante, "id" | "token" | "ativo">) => Participante;
+  updateParticipante: (id: string, data: Partial<Pick<Participante, "nome" | "apelido" | "email" | "telefone">>) => void;
   removeParticipante: (id: string) => void;
   toggleParticipanteAtivo: (id: string) => void;
   clearGrupoData: (grupoId: string) => void;
@@ -348,6 +349,13 @@ export const useBolao = create<BolaoState>()(
         set((s) => ({ participantes: [...s.participantes, novo] }));
         return novo;
       },
+
+      updateParticipante: (id, data) =>
+        set((s) => ({
+          participantes: s.participantes.map((p) =>
+            p.id === id ? { ...p, ...data } : p
+          ),
+        })),
 
       removeParticipante: (id) =>
         set((s) => ({ participantes: s.participantes.filter((p) => p.id !== id) })),
