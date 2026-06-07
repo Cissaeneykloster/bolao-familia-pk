@@ -89,6 +89,12 @@ interface BolaoState {
   setGuess: (id: string, side: "a" | "b", dir: 1 | -1) => void;
   saveGuess: (id: string) => void;
 
+  // Sincronização Supabase → store
+  setParticipantes: (p: Participante[]) => void;
+  setOfficialResults: (r: Record<string, { sa: number; sb: number }>) => void;
+  setMatchPts: (pts: Record<string, number>) => void;
+  mergeGuesses: (g: Record<string, { a: number; b: number }>) => void;
+
   // Previsão dos grupos
   setGroupPrediction: (group: string, first: string, second: string) => void;
   saveGroupPredictions: () => void;
@@ -282,6 +288,12 @@ export const useBolao = create<BolaoState>()(
           delete next[grupoId];
           return { desafioCatsByGroup: next };
         }),
+
+      // Supabase sync setters
+      setParticipantes: (p) => set({ participantes: p }),
+      setOfficialResults: (r) => set({ officialResults: r }),
+      setMatchPts: (pts) => set({ matchPts: pts }),
+      mergeGuesses: (g) => set((s) => ({ guesses: { ...s.guesses, ...g } })),
 
       setGroupPrediction: (group, first, second) =>
         set((s) => {

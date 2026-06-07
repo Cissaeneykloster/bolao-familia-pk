@@ -16,6 +16,7 @@ import { DesafiosScreen } from "@/components/screens/DesafiosScreen";
 import { AdminScreen } from "@/components/screens/AdminScreen";
 import { RegulamentoScreen } from "@/components/screens/RegulamentoScreen";
 import { SelecionarGrupoScreen } from "@/components/screens/SelecionarGrupoScreen";
+import { useSupabaseSync } from "@/hooks/useSupabaseSync";
 
 const SCREENS: Record<string, React.ReactNode> = {
   ranking:     <RankingScreen />,
@@ -31,6 +32,9 @@ const SCREENS: Record<string, React.ReactNode> = {
 export default function Home() {
   const { current, theme, currentGrupoId } = useBolao();
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Sincroniza dados críticos com o Supabase (participantes, resultados, pontos)
+  useSupabaseSync();
 
   return (
     <div data-theme={theme}>

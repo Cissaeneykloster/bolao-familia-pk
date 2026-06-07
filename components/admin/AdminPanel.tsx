@@ -3,9 +3,13 @@
 import { useState } from "react";
 import { useBolao } from "@/lib/store";
 import { rankWithEff, effPts, mScore, breakdown, bonusPts } from "@/lib/scoring";
-import { MATCHES, LOCKED_BETS, ADMINS } from "@/lib/mock-data";
+import { MATCHES, ADMINS } from "@/lib/mock-data";
 import { participantesToPlayers } from "@/lib/players";
 import { useDesafioCats } from "@/lib/useDesafios";
+import {
+  upsertParticipante, deleteParticipante, updateParticipanteDb,
+  upsertOfficialResult, upsertMatchPtsBatch,
+} from "@/lib/supabase-sync";
 
 type AdminTab = "pontos" | "palpites" | "resultados" | "participantes" | "desafios";
 
@@ -333,8 +337,15 @@ function TabResultados() {
               <div style={{ flex: 1 }} />
               <button
                 aria-label={isOfficial ? `Alterar resultado ${m.id}` : `Salvar resultado ${m.id}`}
-                onClick={() => {
+                onClick={async () => {
                   saveResultAndCalcPts(m.id, draft, participantes, adminGrupoId ?? "", guesses, m.phase);
+                  // Grava no Supabase (em background)
+                  upsertOfficialResult(m.id, draft.sa, draft.sb);
+                  // Depois que o store recalculou, sincroniza os pontos
+                  setTimeout(() => {
+                    const newPts = useBolao.getState().matchPts;
+                    upsertMatchPtsBatch(newPts);
+                  }, 200);
                   addFeedEvent({
                     type: "result",
                     body: isOfficial ? "Resultado atualizado" : "Resultado confirmado",
@@ -417,7 +428,8 @@ function TabParticipantes() {
   const handleAdd = () => {
     if (!form.nome || !form.apelido || !adminGrupoId) return;
     const p = addParticipante({ ...form, grupoId: adminGrupoId });
-    // Link inclui o apelido para personalizar a tela de entrada
+    // Grava no Supabase (sem bloquear a UI)
+    upsertParticipante(p);
     const origin = typeof window !== "undefined" ? window.location.origin : "https://bolao-familia-pk.vercel.app";
     const link = `${origin}/entrar/${adminGrupoId}?p=${encodeURIComponent(p.apelido)}`;
     setNovoLink({ nome: p.nome, link });
@@ -690,7 +702,7 @@ function TabParticipantes() {
                 {/* ✕ Remover */}
                 <button
                   aria-label={`Remover ${p.nome}`}
-                  onClick={() => removeParticipante(p.id)}
+                  onClick={() => { removeParticipante(p.id); deleteParticipante(p.id); }}
                   style={{
                     padding: "4px 8px", borderRadius: 6, fontSize: 11,
                     border: "1px solid rgba(255,90,90,0.27)", background: "transparent",
@@ -758,6 +770,7 @@ function TabParticipantes() {
                       onClick={() => {
                         if (!editForm.apelido) return;
                         updateParticipante(p.id, editForm);
+                        updateParticipanteDb(p.id, editForm);
                         setEditingId(null);
                       }}
                       style={{ flex: 2, padding: "8px 0", borderRadius: 7, border: "none", background: "var(--field)", color: "var(--neon)", cursor: "pointer", fontWeight: 700, fontSize: 13 }}
