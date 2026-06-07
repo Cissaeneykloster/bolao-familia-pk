@@ -37,7 +37,7 @@ export interface AdminConfig {
 }
 
 export const ADMINS: AdminConfig[] = [
-  { id: "pk",    usuario: "Admin", senha: "Lelo", nomeGrupo: "Família PK",    emoji: "⭐" },
+  { id: "pk",    usuario: "Ney",   senha: "3015", nomeGrupo: "Família PK",    emoji: "⭐" },
   { id: "cissa", usuario: "Cissa", senha: "3015", nomeGrupo: "Grupo da Cissa", emoji: "🌟" },
 ];
 
