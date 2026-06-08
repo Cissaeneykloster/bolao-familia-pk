@@ -214,14 +214,30 @@ export function PalpitesScreen() {
                         {/* Resultado */}
                         {g ? (
                           <>
-                            <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
-                              Você apostou: <strong style={{ color: "var(--text)" }}>{g.a} × {g.b}</strong>
-                            </p>
+                            {/* Total de pontos em destaque */}
+                            {(() => {
+                              const { breakdown: bkd } = require("@/lib/scoring");
+                              const bd = bkd({ sa: official.sa, sb: official.sb }, { a: g.a, b: g.b });
+                              return (
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                                  <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
+                                    Seu palpite: <strong style={{ color: "var(--text)" }}>{g.a} × {g.b}</strong>
+                                  </p>
+                                  <span style={{
+                                    fontSize: 15, fontWeight: 700, padding: "4px 12px", borderRadius: 10,
+                                    background: bd.total >= 20 ? "rgba(255,215,0,0.15)" : bd.total > 0 ? "var(--neon-soft)" : "rgba(255,90,90,0.1)",
+                                    color: bd.total >= 20 ? "var(--gold)" : bd.total > 0 ? "var(--neon)" : "var(--danger)",
+                                  }}>
+                                    {bd.total >= 20 ? "🎯 " : bd.total > 0 ? "⚡ " : ""}{bd.total > 0 ? `+${bd.total} pts` : "0 pts"}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                             <Breakdown actual={{ sa: official.sa, sb: official.sb }} guess={g} compact />
                           </>
                         ) : (
-                          <p style={{ fontSize: 12, color: "var(--muted)", fontStyle: "italic" }}>
-                            Você não apostou neste treino.
+                          <p style={{ fontSize: 12, color: "var(--danger)", fontStyle: "italic" }}>
+                            Sem palpite neste treino.
                           </p>
                         )}
                       </div>

@@ -33,7 +33,7 @@ export function useSupabaseSync() {
 
       // Carrega resultados oficiais
       const results = await loadOfficialResults();
-      if (Object.keys(results).length > 0) setOfficialResults(results);
+      setOfficialResults(results); // sempre sobrescreve (dados do servidor são autoritativos)
 
       // Carrega pontos
       const pts = await loadMatchPts();
@@ -47,6 +47,14 @@ export function useSupabaseSync() {
     }
 
     syncAll();
+
+    // Re-sync a cada 30s como fallback (caso Realtime não disparar)
+    const pollId = setInterval(async () => {
+      const results = await loadOfficialResults();
+      setOfficialResults(results);
+      const pts = await loadMatchPts();
+      if (Object.keys(pts).length > 0) setMatchPts(pts);
+    }, 30_000);
 
     // ── Realtime: ouve mudanças no banco ──────────────────────────
 
@@ -73,6 +81,9 @@ export function useSupabaseSync() {
 
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollId);
+    };
   }, [setParticipantes, setOfficialResults, setMatchPts, mergeGuesses, currentUserApelido]);
 }
