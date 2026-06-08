@@ -394,6 +394,22 @@ function TabParticipantes() {
   // Participantes antigos que precisam ser migrados (sem grupoId)
   const semGrupo = participantes.filter((p) => semGrupoId(p));
   const adminCfg = ADMINS.find((a) => a.id === adminGrupoId);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState("");
+
+  /** Envia todos os participantes locais para o Supabase */
+  const handleSyncToSupabase = async () => {
+    setSyncing(true);
+    setSyncMsg("Sincronizando...");
+    let ok = 0;
+    for (const p of meusPart) {
+      await upsertParticipante({ ...p, grupoId: p.grupoId || adminGrupoId || "" });
+      ok++;
+    }
+    setSyncMsg(`✅ ${ok} participante(s) enviados para o Supabase!`);
+    setSyncing(false);
+    setTimeout(() => setSyncMsg(""), 4000);
+  };
 
   // Importa participantes a partir de links ou apelidos (um por linha)
   const handleImport = () => {
@@ -455,6 +471,37 @@ function TabParticipantes() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* ── Sincronizar com Supabase ── */}
+      <div style={{
+        padding: "10px 14px", borderRadius: 10,
+        background: "rgba(0,255,135,0.05)", border: "1px solid rgba(0,255,135,0.2)",
+        display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
+      }}>
+        <div>
+          <p style={{ fontSize: 12, fontWeight: 700, color: "var(--neon)", margin: 0 }}>
+            ☁️ Supabase conectado
+          </p>
+          <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>
+            {meusPart.length} participante(s) locais
+          </p>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end" }}>
+          {syncMsg && <span style={{ fontSize: 11, color: "var(--neon)" }}>{syncMsg}</span>}
+          <button
+            onClick={handleSyncToSupabase}
+            disabled={syncing || meusPart.length === 0}
+            style={{
+              padding: "6px 12px", borderRadius: 7, fontSize: 11, fontWeight: 700,
+              border: "1px solid rgba(0,255,135,0.4)", background: "rgba(0,255,135,0.1)",
+              color: "var(--neon)", cursor: syncing ? "wait" : "pointer",
+              opacity: meusPart.length === 0 ? 0.5 : 1,
+            }}
+          >
+            {syncing ? "⏳ Enviando..." : "⬆️ Enviar para Supabase"}
+          </button>
+        </div>
+      </div>
+
       {/* ── Banner de migração (participantes sem grupo) ── */}
       {semGrupo.length > 0 && adminGrupoId && (
         <div style={{
