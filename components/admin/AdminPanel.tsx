@@ -8,7 +8,7 @@ import { participantesToPlayers } from "@/lib/players";
 import { useDesafioCats } from "@/lib/useDesafios";
 import {
   upsertParticipante, deleteParticipante, updateParticipanteDb,
-  upsertOfficialResult, upsertMatchPtsBatch,
+  upsertOfficialResult, upsertMatchPtsBatch, syncAllOfficialResults,
 } from "@/lib/supabase-sync";
 
 type AdminTab = "pontos" | "palpites" | "resultados" | "participantes" | "desafios";
@@ -275,6 +275,8 @@ function TabResultados() {
   const { resultFix, setResultFix, saveResultAndCalcPts, addFeedEvent, participantes, adminGrupoId, guesses, officialResults } = useBolao();
   const [drafts, setDrafts] = useState<Record<string, { sa: number; sb: number }>>({});
   const [saved, setSaved] = useState<string | null>(null);
+  const [syncingResults, setSyncingResults] = useState(false);
+  const [syncResultMsg, setSyncResultMsg] = useState("");
   // TODOS os jogos ordenados por data (incluindo treinos)
   const allMatches = [...MATCHES]
     .sort((a, b) => (a.kickoff ?? 0) - (b.kickoff ?? 0));
@@ -288,6 +290,43 @@ function TabResultados() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {/* Banner de sincronização */}
+      <div style={{
+        padding: "10px 14px", borderRadius: 10,
+        background: "rgba(0,255,135,0.05)", border: "1px solid rgba(0,255,135,0.2)",
+        display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
+      }}>
+        <div>
+          <p style={{ fontSize: 12, fontWeight: 700, color: "var(--neon)", margin: 0 }}>☁️ Resultados no Supabase</p>
+          <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>
+            {Object.keys(officialResults).length} resultado(s) local(is) · Clique para enviar a todos
+          </p>
+          {syncResultMsg && <p style={{ fontSize: 11, color: "var(--neon)", margin: "2px 0 0" }}>{syncResultMsg}</p>}
+        </div>
+        <button
+          onClick={async () => {
+            setSyncingResults(true);
+            setSyncResultMsg("Enviando...");
+            const n = await syncAllOfficialResults(officialResults);
+            // Também sincroniza os pontos
+            const newPts = useBolao.getState().matchPts;
+            await upsertMatchPtsBatch(newPts);
+            setSyncResultMsg(`✅ ${n} resultado(s) enviados para todos!`);
+            setSyncingResults(false);
+            setTimeout(() => setSyncResultMsg(""), 5000);
+          }}
+          disabled={syncingResults || Object.keys(officialResults).length === 0}
+          style={{
+            padding: "7px 12px", borderRadius: 7, fontSize: 11, fontWeight: 700,
+            border: "1px solid rgba(0,255,135,0.4)", background: "rgba(0,255,135,0.1)",
+            color: "var(--neon)", cursor: "pointer", whiteSpace: "nowrap",
+            opacity: Object.keys(officialResults).length === 0 ? 0.4 : 1,
+          }}
+        >
+          {syncingResults ? "⏳..." : "⬆️ Enviar resultados"}
+        </button>
+      </div>
+
       <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
         Informe o resultado de cada jogo. O sistema calculará os pontos automaticamente.
         Participantes sem palpite recebem <strong style={{ color: "var(--danger)" }}>−3 pts</strong>.

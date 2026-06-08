@@ -80,6 +80,17 @@ export async function upsertOfficialResult(matchId: string, sa: number, sb: numb
   if (error) console.error("[SB] upsertOfficialResult:", error.message);
 }
 
+/** Sincroniza TODOS os resultados locais para o Supabase de uma vez */
+export async function syncAllOfficialResults(results: Record<string, { sa: number; sb: number }>) {
+  const rows = Object.entries(results).map(([match_id, { sa, sb }]) => ({
+    match_id, sa, sb, updated_at: new Date().toISOString(),
+  }));
+  if (rows.length === 0) return 0;
+  const { error } = await supabase.from("official_results").upsert(rows);
+  if (error) { console.error("[SB] syncAllOfficialResults:", error.message); return 0; }
+  return rows.length;
+}
+
 // ── Pontos das partidas ───────────────────────────────────────────
 
 /** Carrega pontos de todos os participantes */

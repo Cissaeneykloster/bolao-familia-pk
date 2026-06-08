@@ -243,7 +243,13 @@ export function PlacarInput({ match, onSaved }: PlacarInputProps) {
           minHeight: 44,
         }}
       >
-        {frozen ? "🔒 Resultado oficial lançado" : saved ? "✅ Salvo!" : "💾 Salvar palpite"}
+        {frozen
+          ? "🔒 Resultado oficial lançado"
+          : saved
+          ? "✅ Salvo!"
+          : guess && (guess.a > 0 || guess.b > 0)
+          ? "✏️ Alterar palpite"
+          : "💾 Salvar palpite"}
       </button>
     </div>
   );
