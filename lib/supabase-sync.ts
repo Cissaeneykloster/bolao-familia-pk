@@ -109,6 +109,16 @@ export async function upsertMatchPts(apelido: string, pts: number) {
   if (error) console.error("[SB] upsertMatchPts:", error.message);
 }
 
+/** Zera pontos de todos no Supabase */
+export async function resetMatchPtsDb() {
+  // Busca todos os apelidos e zera
+  const { data } = await supabase.from("match_pts").select("apelido");
+  if (!data || data.length === 0) return;
+  const rows = data.map((r) => ({ apelido: r.apelido, pts: 0, updated_at: new Date().toISOString() }));
+  const { error } = await supabase.from("match_pts").upsert(rows);
+  if (error) console.error("[SB] resetMatchPtsDb:", error.message);
+}
+
 /** Grava pontos de vários participantes de uma vez */
 export async function upsertMatchPtsBatch(ptsMap: Record<string, number>) {
   const rows = Object.entries(ptsMap).map(([apelido, pts]) => ({

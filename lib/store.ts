@@ -127,7 +127,7 @@ interface BolaoState {
   setAdminDelta: (name: string, delta: number) => void;
   resetAdminDelta: (name: string) => void;
   setBetFix: (id: string, score: { a: number; b: number }) => void;
-  // Salva resultado E recalcula pontos de todos os participantes do grupo
+  // Salva resultado E recalcula pontos (exceto treinos — não contam para ranking)
   saveResultAndCalcPts: (
     matchId: string,
     score: { sa: number; sb: number },
@@ -135,7 +135,10 @@ interface BolaoState {
     grupoId: string,
     guesses: Record<string, { a: number; b: number }>,
     matchPhase: import("./types").MatchPhase,
+    isTraining?: boolean,
   ) => void;
+  // Zera todos os pontos de partidas
+  resetMatchPts: () => void;
   setResultFix: (id: string, score: { sa: number; sb: number }) => void;
 
   // Participantes — scoped por grupo
@@ -367,8 +370,18 @@ export const useBolao = create<BolaoState>()(
       setBetFix: (id, score) =>
         set((state) => ({ betFix: { ...state.betFix, [id]: score } })),
 
-      saveResultAndCalcPts: (matchId, score, participantes, _grupoId, guesses, matchPhase) =>
+      resetMatchPts: () => set({ matchPts: {} }),
+
+      saveResultAndCalcPts: (matchId, score, participantes, _grupoId, guesses, matchPhase, isTraining = false) =>
         set((state) => {
+          // Treinos NÃO calculam pontos — só salvam o resultado oficial
+          if (isTraining) {
+            return {
+              resultFix: { ...state.resultFix, [matchId]: score },
+              officialResults: { ...state.officialResults, [matchId]: score },
+            };
+          }
+
           const { breakdown: bkd } = require("./scoring");
           const ativos = participantes.filter((p) => p.ativo);
 

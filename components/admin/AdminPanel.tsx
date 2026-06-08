@@ -8,7 +8,7 @@ import { participantesToPlayers } from "@/lib/players";
 import { useDesafioCats } from "@/lib/useDesafios";
 import {
   upsertParticipante, deleteParticipante, updateParticipanteDb,
-  upsertOfficialResult, upsertMatchPtsBatch, syncAllOfficialResults,
+  upsertOfficialResult, upsertMatchPtsBatch, syncAllOfficialResults, resetMatchPtsDb,
 } from "@/lib/supabase-sync";
 
 type AdminTab = "pontos" | "palpites" | "resultados" | "participantes" | "desafios";
@@ -119,15 +119,48 @@ function TabDesafios() {
 
 // ── Aba Pontos ───────────────────────────────────────────────────
 function TabPontos() {
-  const { adminDelta, setAdminDelta, resetAdminDelta, desafios, comboBank, penalty, participantes, adminGrupoId } = useBolao();
+  const { adminDelta, setAdminDelta, resetAdminDelta, desafios, comboBank, penalty, participantes, adminGrupoId, resetMatchPts, matchPts } = useBolao();
   const DESAFIO_CATS = useDesafioCats();
   const bonus = bonusPts(desafios, DESAFIO_CATS, comboBank, penalty);
   const meusPart = participantes.filter((p) => p.grupoId === adminGrupoId && p.ativo);
   const players = participantesToPlayers(meusPart, adminDelta);
   const ranked = rankWithEff(players, adminDelta, bonus);
 
+  const totalMatchPts = Object.values(matchPts).reduce((s, v) => s + Math.abs(v), 0);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {/* Botão zerar ranking */}
+      {totalMatchPts > 0 && (
+        <div style={{
+          padding: "10px 14px", borderRadius: 10,
+          background: "rgba(255,90,90,0.06)", border: "1px solid rgba(255,90,90,0.25)",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+        }}>
+          <div>
+            <p style={{ fontSize: 12, fontWeight: 700, color: "var(--danger)", margin: 0 }}>⚠️ Ranking com pontos de treino</p>
+            <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>Zere antes dos jogos oficiais começarem</p>
+          </div>
+          <button
+            onClick={async () => {
+              if (!window.confirm("Zerar TODOS os pontos de partidas do ranking? (Pontos de desafios são mantidos)")) return;
+              resetMatchPts();
+              await resetMatchPtsDb();
+              // Também zera o matchPts de todos os participantes no Supabase
+              const zeroMap: Record<string, number> = {};
+              participantes.filter((p) => p.ativo).forEach((p) => { zeroMap[p.apelido] = 0; });
+              await upsertMatchPtsBatch(zeroMap);
+            }}
+            style={{
+              padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 700,
+              border: "none", background: "var(--danger)", color: "#fff", cursor: "pointer",
+            }}
+          >
+            🗑️ Zerar ranking
+          </button>
+        </div>
+      )}
+
       {ranked.map((p) => {
         const pts = effPts(p, adminDelta, bonus);
         const delta = adminDelta[p.name] ?? 0;
@@ -377,7 +410,7 @@ function TabResultados() {
               <button
                 aria-label={isOfficial ? `Alterar resultado ${m.id}` : `Salvar resultado ${m.id}`}
                 onClick={async () => {
-                  saveResultAndCalcPts(m.id, draft, participantes, adminGrupoId ?? "", guesses, m.phase);
+                  saveResultAndCalcPts(m.id, draft, participantes, adminGrupoId ?? "", guesses, m.phase, !!m.training);
                   // Grava no Supabase (em background)
                   upsertOfficialResult(m.id, draft.sa, draft.sb);
                   // Depois que o store recalculou, sincroniza os pontos
