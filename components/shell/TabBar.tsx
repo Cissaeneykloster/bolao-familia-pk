@@ -1,21 +1,24 @@
 "use client";
 
 import { useBolao } from "@/lib/store";
+import { useLang, T } from "@/lib/useLang";
 
 type Screen = "ranking" | "jogos" | "palpites" | "grupos" | "desafios" | "feed" | "regulamento";
 
-const TABS: { id: Screen; icon: string; label: string; badge?: string }[] = [
-  { id: "ranking",     icon: "🏆", label: "Ranking" },
-  { id: "jogos",       icon: "⚽", label: "Jogos" },
-  { id: "palpites",    icon: "🎯", label: "Palpites", badge: "4" },
-  { id: "grupos",      icon: "📊", label: "Grupos" },
-  { id: "desafios",    icon: "🎮", label: "Desafios" },
-  { id: "feed",        icon: "🔥", label: "Feed" },
-  { id: "regulamento", icon: "📋", label: "Regras" },
-];
-
 export function TabBar() {
   const { current, setScreen } = useBolao();
+  const lang = useLang();
+  const t = T[lang];
+
+  const TABS: { id: Screen; icon: string; label: string; badge?: string }[] = [
+    { id: "ranking",     icon: "🏆", label: t.ranking },
+    { id: "jogos",       icon: "⚽", label: t.jogos },
+    { id: "palpites",    icon: "🎯", label: t.palpites, badge: "4" },
+    { id: "grupos",      icon: "📊", label: t.grupos },
+    { id: "desafios",    icon: "🎮", label: t.desafios },
+    { id: "feed",        icon: "🔥", label: t.feed },
+    { id: "regulamento", icon: "📋", label: t.regras },
+  ];
 
   return (
     <>
@@ -130,6 +133,18 @@ export function TabBar() {
 /* Desktop top tabs — renderizado separado no layout */
 export function TopTabs() {
   const { current, setScreen } = useBolao();
+  const lang = useLang();
+  const t = T[lang];
+
+  const TABS: { id: Screen; icon: string; label: string; badge?: string }[] = [
+    { id: "ranking",     icon: "🏆", label: t.ranking },
+    { id: "jogos",       icon: "⚽", label: t.jogos },
+    { id: "palpites",    icon: "🎯", label: t.palpites, badge: "4" },
+    { id: "grupos",      icon: "📊", label: t.grupos },
+    { id: "desafios",    icon: "🎮", label: t.desafios },
+    { id: "feed",        icon: "🔥", label: t.feed },
+    { id: "regulamento", icon: "📋", label: t.regras },
+  ];
 
   return (
     <nav

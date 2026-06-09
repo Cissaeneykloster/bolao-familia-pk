@@ -15,22 +15,25 @@ import { FeedScreen } from "@/components/feed/FeedScreen";
 import { DesafiosScreen } from "@/components/screens/DesafiosScreen";
 import { AdminScreen } from "@/components/screens/AdminScreen";
 import { RegulamentoScreen } from "@/components/screens/RegulamentoScreen";
+import { RegulamentoScreenEn } from "@/components/screens/RegulamentoScreenEn";
 import { SelecionarGrupoScreen } from "@/components/screens/SelecionarGrupoScreen";
 import { useSupabaseSync } from "@/hooks/useSupabaseSync";
-
-const SCREENS: Record<string, React.ReactNode> = {
-  ranking:     <RankingScreen />,
-  jogos:       <JogosScreen />,
-  palpites:    <PalpitesScreen />,
-  grupos:      <GruposScreen />,
-  desafios:    <DesafiosScreen />,
-  feed:        <FeedScreen />,
-  admin:       <AdminScreen />,
-  regulamento: <RegulamentoScreen />,
-};
+import { useLang } from "@/lib/useLang";
 
 export default function Home() {
   const { current, theme, currentGrupoId } = useBolao();
+  const lang = useLang();
+
+  const SCREENS: Record<string, React.ReactNode> = {
+    ranking:     <RankingScreen />,
+    jogos:       <JogosScreen />,
+    palpites:    <PalpitesScreen />,
+    grupos:      <GruposScreen />,
+    desafios:    <DesafiosScreen />,
+    feed:        <FeedScreen />,
+    admin:       <AdminScreen />,
+    regulamento: lang === "en" ? <RegulamentoScreenEn /> : <RegulamentoScreen />,
+  };
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Sincroniza dados críticos com o Supabase (participantes, resultados, pontos)

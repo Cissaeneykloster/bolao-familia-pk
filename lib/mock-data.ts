@@ -34,11 +34,13 @@ export interface AdminConfig {
   senha: string;    // senha do admin
   nomeGrupo: string;// nome exibido no app
   emoji: string;    // emoji do grupo
+  lang?: "pt" | "en"; // idioma do grupo (padrão: pt)
 }
 
 export const ADMINS: AdminConfig[] = [
-  { id: "pk",    usuario: "Ney",   senha: "3015", nomeGrupo: "Família PK",    emoji: "⭐" },
-  { id: "cissa", usuario: "Cissa", senha: "3015", nomeGrupo: "Grupo da Cissa", emoji: "🌟" },
+  { id: "pk",    usuario: "Ney",   senha: "3015", nomeGrupo: "Família PK",    emoji: "⭐", lang: "pt" },
+  { id: "cissa", usuario: "Cissa", senha: "3015", nomeGrupo: "Grupo da Cissa", emoji: "🌟", lang: "pt" },
+  { id: "pedro", usuario: "Pedro", senha: "3015", nomeGrupo: "Pedro's Group",  emoji: "🔵", lang: "en" },
 ];
 
 // Helper: encontra admin pelo login
@@ -492,6 +494,55 @@ export const SCORING: ScoringRule[] = [
   { key: "diff",   label: "Diferença de gols", pts: 3  },
   { key: "golsA",  label: "Gols time A",       pts: 2  },
   { key: "golsB",  label: "Gols time B",       pts: 2  },
+];
+
+// ── Desafios padrão em inglês (para grupos com lang="en") ─────────
+export const DESAFIO_CATS_EN: DesafioCat[] = [
+  {
+    id: "quarto", icon: "🛏️", name: "Bedroom", pts: 3,
+    items: [
+      "Make the bed before 9am",
+      "Organize yesterday's clothes",
+      "Clean the bedside table",
+      "Sweep/vacuum the bedroom",
+    ],
+  },
+  {
+    id: "casa", icon: "🏠", name: "Home", pts: 3,
+    items: [
+      "Wash the dishes",
+      "Clean the kitchen",
+      "Take out the trash",
+      "Tidy up the living room",
+    ],
+  },
+  {
+    id: "servico", icon: "❤️", name: "Act of Service", pts: 5,
+    items: [
+      "Help a family member without being asked",
+      "Prepare lunch or dinner",
+      "Do the grocery shopping",
+      "Take care of a child for 1 hour",
+    ],
+  },
+  {
+    id: "intelectual", icon: "📚", name: "Intellectual", pts: 4,
+    items: [
+      "Read for 20 minutes",
+      "Watch a class or lecture",
+      "Write in your journal",
+      "Solve a creative problem",
+    ],
+  },
+  {
+    id: "saude", icon: "💧", name: "Health", pts: 3,
+    items: [
+      "Drink 2 liters of water",
+      "Exercise for 20 minutes",
+      "Sleep before midnight",
+      "Meditate for 10 minutes",
+    ],
+  },
 ];
 
 // ── Times base de cada grupo (zerado — calculado dinamicamente) ────
