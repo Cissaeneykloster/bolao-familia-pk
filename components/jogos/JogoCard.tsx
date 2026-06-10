@@ -4,12 +4,15 @@ import { useBolao } from "@/lib/store";
 import { mScore, breakdown } from "@/lib/scoring";
 import { useCountdown } from "@/hooks/useCountdown";
 import { EXTRA_MS_AFTER_KICKOFF } from "@/lib/mock-data";
+import { useLang, T, countryName } from "@/lib/useLang";
 // Amistosos de treino nunca fecham — usamos um deadline muito distante
 import type { Match } from "@/lib/types";
 
 // ── Breakdown compacto no card ────────────────────────────────────
 function MiniBreakdown({ match, guess }: { match: Match; guess: { a: number; b: number } }) {
   const { resultFix } = useBolao();
+  const lang = useLang();
+  const t = T[lang];
   const actual = mScore(match, resultFix);
   const bd = breakdown(actual, guess);
   return (
@@ -21,7 +24,7 @@ function MiniBreakdown({ match, guess }: { match: Match; guess: { a: number; b: 
           color: r.hit ? "var(--ok)" : "var(--muted)",
           border: `1px solid ${r.hit ? "var(--ok)33" : "var(--border)"}`,
         }}>
-          {r.hit ? "✅" : "❌"} {r.label}
+          {r.hit ? "✅" : "❌"} {t.breakdownLabels[r.key as keyof typeof t.breakdownLabels] ?? r.label}
         </span>
       ))}
       <span style={{ fontSize: 11, fontWeight: 700, color: "var(--neon)", marginLeft: 4 }}>
@@ -34,6 +37,8 @@ function MiniBreakdown({ match, guess }: { match: Match; guess: { a: number; b: 
 // ── Card principal ────────────────────────────────────────────────
 export function JogoCard({ match }: { match: Match }) {
   const { guesses, resultFix, setScreen, card, officialResults } = useBolao();
+  const lang = useLang();
+  const t = T[lang];
   // Amistosos de treino: deadline = ano 2099 (nunca fecha) EXCETO se resultado oficial lançado
   const hasOfficial = !!officialResults[match.id];
   const trainingDeadline = (match.training && !hasOfficial) ? new Date("2099-01-01").getTime() : undefined;
@@ -84,17 +89,17 @@ export function JogoCard({ match }: { match: Match }) {
             background: "color-mix(in srgb, var(--live) 15%, transparent)",
             padding: "2px 8px", borderRadius: 10,
           }}>
-            🔴 AO VIVO {match.minute}&apos;
+            {t.aoVivo} {match.minute}&apos;
           </span>
         )}
         {match.training && !hasOfficial && (
           <span style={{ fontSize: 11, fontWeight: 700, color: "var(--warn)", background: "rgba(255,216,77,0.15)", padding: "2px 8px", borderRadius: 10 }}>
-            🎯 TREINO
+            {t.treino}
           </span>
         )}
         {effectiveStatus === "finished" && (
           <span style={{ fontSize: 11, color: "var(--muted)", background: "var(--border)", padding: "2px 8px", borderRadius: 10 }}>
-            {match.training ? "🎯 TREINO · ENCERRADO" : "ENCERRADO"}
+            {match.training ? t.treinoEncerrado : t.encerrado}
           </span>
         )}
         {effectiveStatus === "upcoming" && match.label && (
@@ -108,7 +113,7 @@ export function JogoCard({ match }: { match: Match }) {
         <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }}>
           <span style={{ fontSize: isCompact ? 20 : 24 }}>{match.a.flag}</span>
           <span style={{ fontSize: isCompact ? 12 : 14, fontWeight: 600, color: "var(--text)" }}>
-            {match.a.name}
+            {countryName(match.a.name, lang)}
           </span>
         </div>
 
@@ -132,7 +137,7 @@ export function JogoCard({ match }: { match: Match }) {
         {/* Time B */}
         <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, justifyContent: "flex-end" }}>
           <span style={{ fontSize: isCompact ? 12 : 14, fontWeight: 600, color: "var(--text)", textAlign: "right" }}>
-            {match.b.name}
+            {countryName(match.b.name, lang)}
           </span>
           <span style={{ fontSize: isCompact ? 20 : 24 }}>{match.b.flag}</span>
         </div>
@@ -143,15 +148,15 @@ export function JogoCard({ match }: { match: Match }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           {match.training ? (
             <span style={{ fontSize: 12, color: "var(--warn)" }}>
-              🎯 Treino — apostas sempre abertas
+              {t.apostas}
             </span>
           ) : (
             <span style={{ fontSize: 12, color: "var(--warn)" }}>
-              ⏰ Fecha em {countdown}
+              {lang === "en" ? "⏰ Closes in" : "⏰ Fecha em"} {countdown}
             </span>
           )}
           <button
-            aria-label={`Apostar agora em ${match.a.name} × ${match.b.name}`}
+            aria-label={`${t.apostar} ${countryName(match.a.name, lang)} × ${countryName(match.b.name, lang)}`}
             onClick={() => setScreen("palpites")}
             style={{
               background: "var(--field)", color: "var(--neon)",
@@ -159,21 +164,21 @@ export function JogoCard({ match }: { match: Match }) {
               padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer",
             }}
           >
-            🎯 Apostar
+            {t.apostar}
           </button>
         </div>
       )}
 
       {effectiveStatus === "live" && (
         <p style={{ fontSize: 12, color: "var(--muted)", fontStyle: "italic" }}>
-          Torcendo por você 🤞
+          {lang === "en" ? "Rooting for you 🤞" : "Torcendo por você 🤞"}
         </p>
       )}
 
       {effectiveStatus === "finished" && guess && (
         <div>
           <p style={{ fontSize: 12, color: "var(--muted)" }}>
-            Você apostou: <strong style={{ color: "var(--text)" }}>{guess.a} × {guess.b}</strong>
+            {t.voceApostou} <strong style={{ color: "var(--text)" }}>{guess.a} × {guess.b}</strong>
           </p>
           <MiniBreakdown match={{ ...match, sa: actual.sa, sb: actual.sb, status: "finished" }} guess={guess} />
         </div>
@@ -181,7 +186,9 @@ export function JogoCard({ match }: { match: Match }) {
 
       {effectiveStatus === "finished" && !guess && (
         <p style={{ fontSize: 12, color: "var(--danger)", fontStyle: "italic" }}>
-          Sem palpite — {match.training ? "0 pts (treino não conta)" : "−3 pts no ranking"}
+          {match.training
+            ? (lang === "en" ? "No bet — 0 pts (training doesn't count)" : "Sem palpite — 0 pts (treino não conta)")
+            : (lang === "en" ? "No bet — −3 pts in ranking" : "Sem palpite — −3 pts no ranking")}
         </p>
       )}
     </div>
