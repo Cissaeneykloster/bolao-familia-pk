@@ -18,6 +18,7 @@ export function useSupabaseSync() {
     setMatchPts,
     mergeGuesses,
     currentUserApelido,
+    participantes: localParticipantes,
   } = useBolao();
 
   const synced = useRef(false);
@@ -27,9 +28,32 @@ export function useSupabaseSync() {
     synced.current = true;
 
     async function syncAll() {
-      // Carrega participantes
+      // Carrega participantes — faz MERGE com locais para não perder cadastros
+      // que ainda não foram salvos no Supabase (ex: upsert falhou por rede)
       const parts = await loadParticipantes();
-      if (parts.length > 0) setParticipantes(parts);
+      if (parts.length > 0) {
+        // Merge: Supabase tem prioridade por id; locais sem id no Supabase são mantidos
+        const sbIds = new Set(parts.map((p) => p.id));
+        const localOnly = localParticipantes.filter((p) => !sbIds.has(p.id));
+        const merged = [...parts, ...localOnly];
+        setParticipantes(merged);
+
+        // Tenta re-enviar ao Supabase os participantes que só existem localmente
+        if (localOnly.length > 0) {
+          const { upsertParticipante } = await import("@/lib/supabase-sync");
+          for (const p of localOnly) {
+            upsertParticipante(p).catch(() => {/* silencioso */});
+          }
+        }
+      } else {
+        // Supabase vazio: mantém dados locais e tenta salvar no Supabase
+        if (localParticipantes.length > 0) {
+          const { upsertParticipante } = await import("@/lib/supabase-sync");
+          for (const p of localParticipantes) {
+            upsertParticipante(p).catch(() => {/* silencioso */});
+          }
+        }
+      }
 
       // Carrega resultados oficiais
       const results = await loadOfficialResults();
