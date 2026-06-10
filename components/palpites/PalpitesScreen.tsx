@@ -10,6 +10,7 @@ import { PrevisaoGrupos } from "./PrevisaoGrupos";
 import { useToast } from "@/components/shell/Toast";
 import { useConfetti } from "@/components/shell/ConfettiCanvas";
 import { arePredictionsLocked, calcGroupPredictionPts } from "@/lib/standings";
+import { useLang, T, countryName } from "@/lib/useLang";
 
 type Tab = "grupos" | "jogos";
 
@@ -17,6 +18,8 @@ export function PalpitesScreen() {
   const { guesses, resultFix, groupPredictions, groupPredictionsSaved, addFeedEvent, officialResults } = useBolao();
   const { show } = useToast();
   const { fire } = useConfetti();
+  const lang = useLang();
+  const t = T[lang];
 
   const predLocked = arePredictionsLocked(groupPredictionsSaved);
   const { total: ptsPrev } = calcGroupPredictionPts(groupPredictions, GROUPS, MATCHES, resultFix);
@@ -36,13 +39,13 @@ export function PalpitesScreen() {
   }).length;
 
   const handleSaved = (matchId: string) => {
-    show("✅ Palpite salvo!");
+    show(t.palpiteSalvo);
     const g = guesses[matchId];
     const match = MATCHES.find((m) => m.id === matchId);
     if (g && match) {
       addFeedEvent({
         type: "sent",
-        body: `Você fez seu palpite em ${match.a.name} × ${match.b.name}`,
+        body: `${lang === "en" ? "You placed a bet on" : "Você fez seu palpite em"} ${countryName(match.a.name, lang)} × ${countryName(match.b.name, lang)}`,
       });
       if (match.status === "finished" || match.training) {
         const actual = mScore(match, resultFix);
@@ -50,7 +53,9 @@ export function PalpitesScreen() {
           fire();
           addFeedEvent({
             type: "exact",
-            body: `Placar exato! ${match.a.name} ${actual.sa}×${actual.sb} ${match.b.name}`,
+            body: lang === "en"
+              ? `Exact score! ${countryName(match.a.name, lang)} ${actual.sa}×${actual.sb} ${countryName(match.b.name, lang)}`
+              : `Placar exato! ${match.a.name} ${actual.sa}×${actual.sb} ${match.b.name}`,
             pts: "+25 pts",
           });
         }
@@ -79,7 +84,7 @@ export function PalpitesScreen() {
             cursor: "pointer", position: "relative" as const,
           }}
         >
-          📋 Previsão dos Grupos
+          {t.previsaoGrupos}
           {!predLocked && previsoes < 12 && (
             <span style={{
               position: "absolute", top: -6, right: -4,
@@ -99,7 +104,7 @@ export function PalpitesScreen() {
         <button
           onClick={() => {
             if (!predLocked && previsoes < 12) {
-              show("⚠️ Salve as previsões dos grupos primeiro!");
+              show(t.salvePrevisoesPrimeiro);
               return;
             }
             setTab("jogos");
@@ -112,7 +117,7 @@ export function PalpitesScreen() {
             cursor: "pointer", opacity: (!predLocked && previsoes < 12) ? 0.5 : 1,
           }}
         >
-          ⚽ Palpites dos Jogos
+          {t.palpitesJogos}
           <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 4 }}>{pct}%</span>
         </button>
       </div>
@@ -125,10 +130,10 @@ export function PalpitesScreen() {
           textAlign: "center",
         }}>
           <p style={{ fontSize: 14, color: "var(--danger)", fontWeight: 700, margin: "0 0 6px" }}>
-            🔒 Palpites bloqueados
+            {t.palpitesBloqueados}
           </p>
           <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-            Preencha e salve a previsão dos {12 - previsoes} grupos restantes primeiro.
+            {t.preenchaGruposRestantes(12 - previsoes)}
           </p>
           <button
             onClick={() => setTab("grupos")}
@@ -138,7 +143,7 @@ export function PalpitesScreen() {
               cursor: "pointer", fontWeight: 700, fontSize: 13,
             }}
           >
-            Ir para Previsão dos Grupos
+            {t.irParaPrevisao}
           </button>
         </div>
       )}
@@ -168,7 +173,7 @@ export function PalpitesScreen() {
             </div>
             <div>
               <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-                {apostados} de {copaMatches.length} jogos apostados
+                {apostados} {t.de} {copaMatches.length} {t.jogosApostados}
               </p>
             </div>
           </div>
@@ -180,7 +185,7 @@ export function PalpitesScreen() {
                 fontSize: 11, fontWeight: 700, color: "var(--warn)",
                 letterSpacing: 1, marginBottom: 8, textTransform: "uppercase",
               }}>
-                🎯 Treino (não conta no ranking)
+                {t.treinoNaoContaRanking}
               </h3>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {training.map((m) => {
@@ -197,18 +202,18 @@ export function PalpitesScreen() {
                         {/* Cabeçalho */}
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <span style={{ fontSize: 12, color: "var(--text)", fontWeight: 600 }}>
-                            {m.a.flag} {m.a.name}
+                            {m.a.flag} {countryName(m.a.name, lang)}
                           </span>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                             <span className="font-bebas" style={{ fontSize: 22, color: "var(--neon)" }}>
                               {official.sa} × {official.sb}
                             </span>
                             <span style={{ fontSize: 10, color: "var(--muted)", background: "var(--border)", padding: "2px 6px", borderRadius: 8 }}>
-                              🎯 TREINO · ENCERRADO
+                              {t.treinoEncerrado}
                             </span>
                           </div>
                           <span style={{ fontSize: 12, color: "var(--text)", fontWeight: 600 }}>
-                            {m.b.name} {m.b.flag}
+                            {countryName(m.b.name, lang)} {m.b.flag}
                           </span>
                         </div>
                         {/* Resultado */}
@@ -221,7 +226,7 @@ export function PalpitesScreen() {
                               return (
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                                   <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
-                                    Seu palpite: <strong style={{ color: "var(--text)" }}>{g.a} × {g.b}</strong>
+                                    {t.seuPalpite} <strong style={{ color: "var(--text)" }}>{g.a} × {g.b}</strong>
                                   </p>
                                   <span style={{
                                     fontSize: 15, fontWeight: 700, padding: "4px 12px", borderRadius: 10,
@@ -237,7 +242,7 @@ export function PalpitesScreen() {
                           </>
                         ) : (
                           <p style={{ fontSize: 12, color: "var(--danger)", fontStyle: "italic" }}>
-                            Sem palpite neste treino.
+                            {t.semPalpiteTreino}
                           </p>
                         )}
                       </div>
@@ -257,7 +262,7 @@ export function PalpitesScreen() {
                 fontSize: 11, fontWeight: 700, color: "var(--muted)",
                 letterSpacing: 1, marginBottom: 8, textTransform: "uppercase",
               }}>
-                Disponíveis para apostar
+                {t.disponiveis}
               </h3>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {upcoming.slice(0, 20).map((m) => (
@@ -279,7 +284,7 @@ export function PalpitesScreen() {
                 fontSize: 11, fontWeight: 700, color: "var(--muted)",
                 letterSpacing: 1, marginBottom: 8, textTransform: "uppercase",
               }}>
-                Palpites encerrados
+                {t.encerrados}
               </h3>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {finished.map((m) => {
@@ -301,16 +306,16 @@ export function PalpitesScreen() {
                         }}
                       >
                         <span style={{ fontSize: 13, color: "var(--muted)", whiteSpace: "nowrap" }}>
-                          ENCERRADO
+                          {t.encerrado}
                         </span>
                         <span style={{ fontSize: 12, color: "var(--text)", flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {m.a.flag} {m.a.name}
+                          {m.a.flag} {countryName(m.a.name, lang)}
                         </span>
                         <span className="font-bebas" style={{ fontSize: 18, color: "var(--neon)", flexShrink: 0 }}>
                           {actual.sa} × {actual.sb}
                         </span>
                         <span style={{ fontSize: 12, color: "var(--text)", flex: 1, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {m.b.name} {m.b.flag}
+                          {countryName(m.b.name, lang)} {m.b.flag}
                         </span>
                         {g ? (
                           <span style={{ fontSize: 11, color: "var(--ok)", flexShrink: 0 }}>
@@ -329,13 +334,13 @@ export function PalpitesScreen() {
                           {g ? (
                             <>
                               <p style={{ fontSize: 12, color: "var(--muted)", margin: "8px 0 6px" }}>
-                                Você apostou: <strong style={{ color: "var(--text)" }}>{g.a} × {g.b}</strong>
+                                {t.voceApostou} <strong style={{ color: "var(--text)" }}>{g.a} × {g.b}</strong>
                               </p>
                               <Breakdown actual={actual} guess={g} compact />
                             </>
                           ) : (
                             <p style={{ fontSize: 12, color: "var(--danger)", margin: "8px 0 0", fontStyle: "italic" }}>
-                              Sem palpite para este jogo → −3 pontos no ranking.
+                              {t.semPalpiteJogo}
                             </p>
                           )}
                         </div>

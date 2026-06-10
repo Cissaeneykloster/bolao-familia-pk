@@ -1,6 +1,7 @@
 "use client";
 
 import { breakdown } from "@/lib/scoring";
+import { useLang, T } from "@/lib/useLang";
 
 interface BreakdownProps {
   actual: { sa: number; sb: number };
@@ -9,6 +10,8 @@ interface BreakdownProps {
 }
 
 export function Breakdown({ actual, guess, compact = false }: BreakdownProps) {
+  const lang = useLang();
+  const t = T[lang];
   const bd = breakdown(actual, guess);
 
   return (
@@ -27,7 +30,7 @@ export function Breakdown({ actual, guess, compact = false }: BreakdownProps) {
         >
           <span style={{ color: r.hit ? "var(--text)" : "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 14 }}>{r.hit ? "✅" : "❌"}</span>
-            {r.label}
+            {t.breakdownLabels[r.key as keyof typeof t.breakdownLabels] ?? r.label}
           </span>
           <span style={{
             fontWeight: 700,
@@ -48,7 +51,7 @@ export function Breakdown({ actual, guess, compact = false }: BreakdownProps) {
         borderTop: "1px solid var(--border)",
       }}>
         <span style={{ fontSize: compact ? 12 : 14, fontWeight: 700, color: "var(--text)" }}>
-          Total
+          {t.total}
         </span>
         <span style={{
           fontSize: compact ? 14 : 18,

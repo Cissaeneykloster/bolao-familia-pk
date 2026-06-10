@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useBolao } from "@/lib/store";
 import { SCORING } from "@/lib/mock-data";
 import type { Match } from "@/lib/types";
+import { useLang, T, countryName } from "@/lib/useLang";
 
 interface PlacarInputProps {
   match: Match;
@@ -107,6 +108,8 @@ function Stepper({
 }
 
 function Preview({ gA, gB }: { gA: number; gB: number }) {
+  const lang = useLang();
+  const t = T[lang];
   const maxPts = SCORING.reduce((s, r) => s + r.pts, 0);
   const winnerPts = SCORING.find((r) => r.key === "winner")!.pts;
 
@@ -123,17 +126,19 @@ function Preview({ gA, gB }: { gA: number; gB: number }) {
     }}>
       <span>
         💡 <strong style={{ color: "var(--text)" }}>
-          {gA > gB ? "Vitória " + "time A" : gA < gB ? "Vitória time B" : "Empate"}
+          {gA > gB ? t.vitoriaTimes("A") : gA < gB ? t.vitoriaTimes("B") : t.empate}
         </strong>
       </span>
-      <span>Se acertar o placar exato: <strong style={{ color: "var(--neon)" }}>+{maxPts} pts</strong></span>
-      <span>Se acertar o vencedor: <strong style={{ color: "var(--neon)" }}>+{winnerPts} pts</strong></span>
+      <span>{t.seAcertarExato} <strong style={{ color: "var(--neon)" }}>+{maxPts} pts</strong></span>
+      <span>{t.seAcertarVencedor} <strong style={{ color: "var(--neon)" }}>+{winnerPts} pts</strong></span>
     </div>
   );
 }
 
 export function PlacarInput({ match, onSaved }: PlacarInputProps) {
   const { guesses, setGuess, saveGuess, palpite, officialResults } = useBolao();
+  const lang = useLang();
+  const t = T[lang];
   const [saved, setSaved] = useState(false);
   const guess = guesses[match.id] ?? { a: 0, b: 0 };
 
@@ -171,7 +176,7 @@ export function PlacarInput({ match, onSaved }: PlacarInputProps) {
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {frozen && (
             <span style={{ fontSize: 10, fontWeight: 700, color: "var(--danger)", background: "rgba(255,90,90,0.1)", padding: "2px 8px", borderRadius: 10 }}>
-              🔒 RESULTADO OFICIAL: {officialResult!.sa} × {officialResult!.sb}
+              {t.resultadoOficial} {officialResult!.sa} × {officialResult!.sb}
             </span>
           )}
           <span style={{ fontSize: 11, color: "var(--muted)" }}>{match.label}</span>
@@ -189,7 +194,7 @@ export function PlacarInput({ match, onSaved }: PlacarInputProps) {
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flex: 1 }}>
           <span style={{ fontSize: size === "large" ? 28 : 22 }}>{match.a.flag}</span>
           <span style={{ fontSize: 11, color: "var(--text)", fontWeight: 600, textAlign: "center", maxWidth: 70 }}>
-            {match.a.name}
+            {countryName(match.a.name, lang)}
           </span>
           <Stepper
             value={guess.a}
@@ -208,7 +213,7 @@ export function PlacarInput({ match, onSaved }: PlacarInputProps) {
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flex: 1 }}>
           <span style={{ fontSize: size === "large" ? 28 : 22 }}>{match.b.flag}</span>
           <span style={{ fontSize: 11, color: "var(--text)", fontWeight: 600, textAlign: "center", maxWidth: 70 }}>
-            {match.b.name}
+            {countryName(match.b.name, lang)}
           </span>
           <Stepper
             value={guess.b}
@@ -244,12 +249,12 @@ export function PlacarInput({ match, onSaved }: PlacarInputProps) {
         }}
       >
         {frozen
-          ? "🔒 Resultado oficial lançado"
+          ? t.resultadoOficialLancado
           : saved
-          ? "✅ Salvo!"
+          ? t.salvo
           : guess && (guess.a > 0 || guess.b > 0)
-          ? "✏️ Alterar palpite"
-          : "💾 Salvar palpite"}
+          ? t.alterarPalpite
+          : t.salvarPalpite}
       </button>
     </div>
   );
