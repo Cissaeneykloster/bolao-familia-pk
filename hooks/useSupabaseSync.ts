@@ -5,7 +5,7 @@ import { useBolao } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import {
   loadParticipantes, loadOfficialResults, loadMatchPts, loadGuesses,
-  loadGroupPredictions,
+  loadGroupPredictions, backfillGuesses, upsertGroupPredictions,
 } from "@/lib/supabase-sync";
 
 /**
@@ -43,11 +43,28 @@ export function useSupabaseSync() {
 
       // Carrega palpites e previsões do usuário atual (se identificado)
       if (currentUserApelido) {
+        // Snapshot do que existe só neste aparelho, antes do merge
+        const localGuesses = { ...useBolao.getState().guesses };
+        const localPreds = { ...useBolao.getState().groupPredictions };
+        const localPredsSaved = useBolao.getState().groupPredictionsSaved;
+
         const guesses = await loadGuesses(currentUserApelido);
         if (Object.keys(guesses).length > 0) mergeGuesses(guesses);
 
+        // Recupera para o servidor os palpites feitos antes da persistência
+        const recovered = await backfillGuesses(currentUserApelido, localGuesses, guesses);
+        if (recovered > 0) console.log(`[SB] backfill: ${recovered} palpite(s) recuperado(s)`);
+
         const { predictions, saved } = await loadGroupPredictions(currentUserApelido);
         if (Object.keys(predictions).length > 0) mergeGroupPredictions(predictions, saved);
+
+        // Recupera previsões locais que o servidor ainda não tem
+        const missingPreds = Object.fromEntries(
+          Object.entries(localPreds).filter(([g]) => !(g in predictions))
+        );
+        if (Object.keys(missingPreds).length > 0) {
+          await upsertGroupPredictions(currentUserApelido, missingPreds, localPredsSaved || saved);
+        }
       }
     }
 
