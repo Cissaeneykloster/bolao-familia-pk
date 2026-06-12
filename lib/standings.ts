@@ -4,6 +4,7 @@
  */
 import type { Match, GroupTeam, Group } from "./types";
 import { mScore } from "./scoring";
+import { EXTRA_MS_AFTER_KICKOFF } from "./mock-data";
 
 /** Timestamp do kickoff do primeiro jogo da Copa (trava das previsões) */
 export const COPA_FIRST_KICKOFF_MS = new Date("2026-06-11T19:00:00Z").getTime(); // 11/Jun 16h BRT = 19h UTC
@@ -11,6 +12,18 @@ export const COPA_FIRST_KICKOFF_MS = new Date("2026-06-11T19:00:00Z").getTime();
 /** Verifica se as previsões dos grupos estão travadas */
 export function arePredictionsLocked(saved: boolean, now = Date.now()): boolean {
   return saved || now >= COPA_FIRST_KICKOFF_MS;
+}
+
+/**
+ * Palpite travado: a partida já começou (kickoff + tolerância de 5 min).
+ * Treinos nunca travam por horário; jogo sem kickoff não trava.
+ */
+export function isMatchLocked(
+  match: Pick<Match, "kickoff" | "training">,
+  now = Date.now(),
+): boolean {
+  if (match.training || !match.kickoff) return false;
+  return now >= match.kickoff + EXTRA_MS_AFTER_KICKOFF;
 }
 
 /** Pontos ganhos com as previsões de grupos (10 pts por classificado acertado) */

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useBolao } from "@/lib/store";
 import { SCORING } from "@/lib/mock-data";
+import { isMatchLocked } from "@/lib/standings";
 import type { Match } from "@/lib/types";
 
 interface PlacarInputProps {
@@ -139,7 +140,9 @@ export function PlacarInput({ match, onSaved }: PlacarInputProps) {
 
   // Resultado oficial lançado pelo admin → jogo congelado para todos
   const officialResult = match.training ? undefined : officialResults[match.id];
-  const frozen = !!officialResult;
+  // Partida já iniciada → palpite travado (regra do bolão)
+  const started = isMatchLocked(match);
+  const frozen = !!officialResult || started;
 
   // Reset saved state quando o palpite mudar
   useEffect(() => { setSaved(false); }, [guess.a, guess.b]);
@@ -169,11 +172,15 @@ export function PlacarInput({ match, onSaved }: PlacarInputProps) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontSize: 11, color: "var(--muted)" }}>{match.group}</span>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {frozen && (
+          {officialResult ? (
             <span style={{ fontSize: 10, fontWeight: 700, color: "var(--danger)", background: "rgba(255,90,90,0.1)", padding: "2px 8px", borderRadius: 10 }}>
-              🔒 RESULTADO OFICIAL: {officialResult!.sa} × {officialResult!.sb}
+              🔒 RESULTADO OFICIAL: {officialResult.sa} × {officialResult.sb}
             </span>
-          )}
+          ) : started ? (
+            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--warn)", background: "rgba(255,216,77,0.1)", padding: "2px 8px", borderRadius: 10 }}>
+              🔒 JOGO INICIADO — palpites encerrados
+            </span>
+          ) : null}
           <span style={{ fontSize: 11, color: "var(--muted)" }}>{match.label}</span>
         </div>
       </div>
