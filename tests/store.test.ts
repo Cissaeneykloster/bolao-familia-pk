@@ -142,3 +142,52 @@ describe("saveResultAndCalcPts — pontos por participante (palpites do Supabase
     expect(useBolao.getState().officialResults["t1"]).toEqual({ sa: 1, sb: 0 });
   });
 });
+
+describe("recalcAllMatchPts — reconstrói o ranking a partir do Supabase", () => {
+  const P = (apelido: string) => ({
+    id: apelido, grupoId: "pk", nome: apelido, apelido,
+    email: "", telefone: "", token: "t", ativo: true,
+  });
+  const participantes = [P("Nino"), P("Cissa")];
+
+  beforeEach(() => {
+    useBolao.setState({ matchPts: {}, officialResults: {}, resultFix: {} });
+  });
+
+  it("recalcula do zero: palpite real de cada um × resultado oficial", () => {
+    useBolao.setState({
+      // pontos antigos errados que devem ser descartados
+      matchPts: { Nino: 999, Cissa: -50 },
+      // ga1r1 é jogo da fase de grupos; a1 é treino (não pontua)
+      officialResults: { ga1r1: { sa: 2, sb: 1 }, a1: { sa: 5, sb: 5 } },
+    });
+    const allGuesses = {
+      ga1r1: { Nino: { a: 2, b: 1 }, Cissa: { a: 0, b: 0 } },
+      a1:    { Nino: { a: 5, b: 5 } }, // treino — deve ser ignorado
+    };
+
+    useBolao.getState().recalcAllMatchPts(participantes, allGuesses);
+
+    const pts = useBolao.getState().matchPts;
+    expect(pts["Nino"]).toBe(25); // exato no 2×1
+    expect(pts["Cissa"]).toBe(0); // errou tudo no 2×1
+  });
+
+  it("sem palpite no jogo = -3; idempotente ao repetir", () => {
+    useBolao.setState({ officialResults: { ga1r1: { sa: 1, sb: 0 } } });
+    const allGuesses = { ga1r1: { Nino: { a: 1, b: 0 } } };
+
+    useBolao.getState().recalcAllMatchPts(participantes, allGuesses);
+    useBolao.getState().recalcAllMatchPts(participantes, allGuesses);
+
+    const pts = useBolao.getState().matchPts;
+    expect(pts["Nino"]).toBe(25);
+    expect(pts["Cissa"]).toBe(-3);
+  });
+
+  it("resultado de jogo desconhecido é ignorado sem quebrar", () => {
+    useBolao.setState({ officialResults: { jogo_inexistente: { sa: 1, sb: 1 } } });
+    useBolao.getState().recalcAllMatchPts(participantes, {});
+    expect(useBolao.getState().matchPts).toEqual({ Nino: 0, Cissa: 0 });
+  });
+});

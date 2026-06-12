@@ -5,7 +5,7 @@ import { persist } from "zustand/middleware";
 import type { Draw, ChallengeRecord, FeedEvent } from "./types";
 import type { Participante } from "./mock-data";
 import type { DesafioCat } from "./types";
-import { DESAFIO_CATS as DEFAULT_CATS } from "./mock-data";
+import { DESAFIO_CATS as DEFAULT_CATS, MATCHES } from "./mock-data";
 import { upsertGuess, upsertGroupPredictions } from "./supabase-sync";
 import { breakdown } from "./scoring";
 
@@ -146,6 +146,12 @@ interface BolaoState {
   ) => void;
   // Zera todos os pontos de partidas
   resetMatchPts: () => void;
+  // Reconstrói TODOS os pontos a partir dos resultados oficiais + palpites
+  // reais (loadAllGuesses). Idempotente — seguro clicar quantas vezes quiser.
+  recalcAllMatchPts: (
+    participantes: import("./mock-data").Participante[],
+    allGuesses: Record<string, Record<string, { a: number; b: number }>>,
+  ) => void;
   setResultFix: (id: string, score: { sa: number; sb: number }) => void;
 
   // Participantes — scoped por grupo
@@ -413,6 +419,26 @@ export const useBolao = create<BolaoState>()(
         set((state) => ({ betFix: { ...state.betFix, [id]: score } })),
 
       resetMatchPts: () => set({ matchPts: {} }),
+
+      recalcAllMatchPts: (participantes, allGuesses) =>
+        set((state) => {
+          const ativos = participantes.filter((p) => p.ativo);
+          const newPts: Record<string, number> = {};
+          for (const part of ativos) newPts[part.apelido] = 0;
+
+          for (const [matchId, score] of Object.entries(state.officialResults)) {
+            const m = MATCHES.find((x) => x.id === matchId);
+            if (!m || m.training) continue; // treino não pontua
+            const matchGuesses = allGuesses[matchId] ?? {};
+            for (const part of ativos) {
+              const g = matchGuesses[part.apelido];
+              newPts[part.apelido] +=
+                g ? breakdown(score, { a: g.a, b: g.b }, m.phase).total : -3;
+            }
+          }
+
+          return { matchPts: newPts };
+        }),
 
       saveResultAndCalcPts: (matchId, score, participantes, _grupoId, matchGuesses, matchPhase, isTraining = false) =>
         set((state) => {
