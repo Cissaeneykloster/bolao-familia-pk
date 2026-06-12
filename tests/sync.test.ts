@@ -135,3 +135,54 @@ describe("mergeGroupPredictions — regras de merge", () => {
     });
   });
 });
+
+// ── Trava de palpite no kickoff ───────────────────────────────────
+
+import { isMatchLocked } from "@/lib/standings";
+import { MATCHES, EXTRA_MS_AFTER_KICKOFF } from "@/lib/mock-data";
+
+describe("isMatchLocked — palpite trava quando a partida começa", () => {
+  const kickoff = new Date("2026-06-20T16:00:00-03:00").getTime();
+
+  it("antes do kickoff: liberado", () => {
+    expect(isMatchLocked({ kickoff }, kickoff - 1000)).toBe(false);
+  });
+
+  it("dentro da tolerância de 5 min: ainda liberado", () => {
+    expect(isMatchLocked({ kickoff }, kickoff + EXTRA_MS_AFTER_KICKOFF - 1)).toBe(false);
+  });
+
+  it("após kickoff + tolerância: travado", () => {
+    expect(isMatchLocked({ kickoff }, kickoff + EXTRA_MS_AFTER_KICKOFF)).toBe(true);
+  });
+
+  it("treino nunca trava por horário", () => {
+    expect(isMatchLocked({ kickoff, training: true }, kickoff + 999_999_999)).toBe(false);
+  });
+
+  it("jogo sem kickoff não trava", () => {
+    expect(isMatchLocked({}, Date.now())).toBe(false);
+  });
+});
+
+describe("saveGuess — respeita a trava do kickoff", () => {
+  it("partida já iniciada: não grava nem local nem no Supabase", () => {
+    const past = MATCHES.find(
+      (m) => !m.training && m.kickoff && m.kickoff + EXTRA_MS_AFTER_KICKOFF < Date.now(),
+    );
+    expect(past, "esperava ao menos um jogo já iniciado no calendário").toBeDefined();
+
+    useBolao.setState({ currentUserApelido: "Nino", guesses: { [past!.id]: { a: 1, b: 0 } } });
+    useBolao.getState().saveGuess(past!.id);
+    expect(upsertGuess).not.toHaveBeenCalled();
+  });
+
+  it("partida futura: grava normalmente", () => {
+    const future = MATCHES.find((m) => !m.training && m.kickoff && m.kickoff > Date.now() + 60_000);
+    expect(future, "esperava ao menos um jogo futuro no calendário").toBeDefined();
+
+    useBolao.setState({ currentUserApelido: "Nino", guesses: { [future!.id]: { a: 2, b: 2 } } });
+    useBolao.getState().saveGuess(future!.id);
+    expect(upsertGuess).toHaveBeenCalledWith("Nino", future!.id, 2, 2);
+  });
+});
