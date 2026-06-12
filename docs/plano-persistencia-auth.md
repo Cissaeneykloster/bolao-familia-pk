@@ -123,11 +123,46 @@ próprias permissões.
 
 ---
 
+## Fase 6 — Desafio diário automático com banner
+
+Hoje o sorteio é manual e local: cada participante clica em "sortear"
+(`SorteioDoDia.tsx`) e o resultado sai do `Math.random` do próprio aparelho —
+cada um tira um desafio diferente e nada é compartilhado. Objetivo: **todo dia
+um desafio é selecionado automaticamente, igual para todo o grupo, exibido em
+banner na tela inicial, e o próprio participante valida se realizou**.
+
+1. **Banco de desafios no Supabase** (tabela `desafios`): migrar a lista que
+   o gestor edita (hoje só em `localStorage`, `desafioCatsByGroup`) para o
+   banco, por grupo. Pré-requisito do sorteio único: todos precisam ver a
+   mesma lista.
+2. **Sorteio determinístico por dia**: trocar `rollDailyChallenge(Math.random)`
+   por um sorteio com semente `hash(grupoId + dataVancouver)`. Todo
+   dispositivo calcula o mesmo resultado, sem cron e sem servidor — o desafio
+   "aparece sozinho" na virada do dia (a infra de janela/timezone em
+   `lib/daily.ts` já existe e é reaproveitada). Remover o botão "sortear".
+3. **Banner na tela inicial**: novo componente `DesafioDoDiaBanner` exibido
+   no topo da tela Ranking (tela inicial do app) com o desafio do dia,
+   countdown da janela e botão "✅ Fiz!" — tocar leva à tela de Desafios para
+   detalhes. A autovalidação existente (`markChallengeDone`) é mantida.
+4. **Persistir a validação** (tabela `desafios_concluidos`:
+   `participante_id, date, done`): a marcação deixa de ser só local —
+   sobrevive a troca de aparelho e permite ao feed/ranking mostrar quem
+   cumpriu o desafio do dia.
+5. **Testes**: sorteio determinístico (mesma data+grupo ⇒ mesmo desafio;
+   dias diferentes ⇒ distribuição variada), banner, gravação da conclusão.
+
+**Entrega:** desafio único por dia para o grupo todo, visível na tela
+inicial, com validação do próprio usuário salva no back-end.
+
+---
+
 ## Ordem de execução e dependências
 
 ```
 Fase 1 (independente, deploy imediato)
 Fase 2 → Fase 3 → Fase 5 → Fase 4
+Fase 6 (itens 1–3 independentes; item 4 idealmente após a Fase 3,
+        para gravar a conclusão com o usuário autenticado)
 ```
 
 A Fase 4 é deliberadamente a última: ligar RLS antes de todos terem conta
@@ -141,6 +176,10 @@ derrubaria os usuários atuais.
   já previsto na UI da Fase 3.
 - **Testes**: o mock de Supabase em `__mocks__/` precisa ganhar `auth.*`;
   os testes de admin que digitam a senha `3015` serão reescritos.
-- **Fora de escopo (registrado para depois)**: desafios/feed no banco,
-  pontos calculados no servidor, jogos vindos de tabela em vez de
+- **Sorteio determinístico**: se o gestor editar a lista de desafios no meio
+  do dia, o desafio sorteado pode mudar (a semente é a mesma, mas o pool
+  muda). Mitigação: congelar edições para o dia corrente ou registrar o
+  sorteio do dia na tabela na primeira abertura.
+- **Fora de escopo (registrado para depois)**: feed no banco, pontos de
+  partidas calculados no servidor, jogos vindos de tabela em vez de
   `mock-data.ts`.
