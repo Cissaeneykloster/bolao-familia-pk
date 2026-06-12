@@ -1,6 +1,10 @@
 -- ── BOLÃO FAMÍLIA PK — Schema Supabase ─────────────────────────
 -- Execute este SQL no painel Supabase: SQL Editor → New query
 
+-- Exibe timestamps em horário de Brasília no painel e nas consultas
+-- (timestamptz sempre guarda o instante; isto muda apenas a exibição)
+ALTER DATABASE postgres SET timezone TO 'America/Sao_Paulo';
+
 -- 1. Participantes
 CREATE TABLE IF NOT EXISTS participantes (
   id          TEXT PRIMARY KEY,
