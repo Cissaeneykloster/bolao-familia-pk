@@ -90,3 +90,55 @@ describe("adminUnlocked não persiste", () => {
     expect(useBolao.getState().adminUnlocked).toBe(false);
   });
 });
+
+describe("saveResultAndCalcPts — pontos por participante (palpites do Supabase)", () => {
+  const P = (apelido: string) => ({
+    id: apelido, grupoId: "pk", nome: apelido, apelido,
+    email: "", telefone: "", token: "t", ativo: true,
+  });
+  const participantes = [P("Nino"), P("Cissa"), P("Dudi")];
+
+  beforeEach(() => {
+    useBolao.setState({ matchPts: {}, officialResults: {}, resultFix: {} });
+  });
+
+  it("cada participante pontua pelo PRÓPRIO palpite; sem palpite = -3", () => {
+    // Resultado 2×1 — Nino acertou exato, Cissa só o vencedor, Dudi não palpitou
+    const matchGuesses = {
+      Nino:  { a: 2, b: 1 },
+      Cissa: { a: 1, b: 0 },
+    };
+    useBolao.getState().saveResultAndCalcPts(
+      "m1", { sa: 2, sb: 1 }, participantes, "pk", matchGuesses, "grupos",
+    );
+
+    const pts = useBolao.getState().matchPts;
+    // exact(10) + winner(5) + total(3) + diff(3) + golsA(2) + golsB(2) = 25
+    expect(pts["Nino"]).toBe(25);
+    // winner(5) + diff(3) = 8
+    expect(pts["Cissa"]).toBe(8);
+    expect(pts["Dudi"]).toBe(-3);
+  });
+
+  it("correção de resultado estorna os pontos antigos individualmente", () => {
+    const matchGuesses = { Nino: { a: 2, b: 1 }, Cissa: { a: 0, b: 0 } };
+
+    // Lança 2×1 e depois corrige para 0×0
+    useBolao.getState().saveResultAndCalcPts("m1", { sa: 2, sb: 1 }, participantes, "pk", matchGuesses, "grupos");
+    useBolao.getState().saveResultAndCalcPts("m1", { sa: 0, sb: 0 }, participantes, "pk", matchGuesses, "grupos");
+
+    const pts = useBolao.getState().matchPts;
+    // Após a correção, só valem os pontos do 0×0:
+    expect(pts["Nino"]).toBe(0);   // errou tudo no 0×0
+    expect(pts["Cissa"]).toBe(25); // exato no 0×0
+    expect(pts["Dudi"]).toBe(-3);  // sem palpite nos dois lançamentos
+  });
+
+  it("treino não mexe nos pontos", () => {
+    useBolao.getState().saveResultAndCalcPts(
+      "t1", { sa: 1, sb: 0 }, participantes, "pk", { Nino: { a: 1, b: 0 } }, "grupos", true,
+    );
+    expect(useBolao.getState().matchPts).toEqual({});
+    expect(useBolao.getState().officialResults["t1"]).toEqual({ sa: 1, sb: 0 });
+  });
+});
