@@ -5,6 +5,7 @@ import { useBolao } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import {
   loadParticipantes, loadOfficialResults, loadMatchPts, loadGuesses,
+  loadGroupPredictions,
 } from "@/lib/supabase-sync";
 
 /**
@@ -17,6 +18,7 @@ export function useSupabaseSync() {
     setOfficialResults,
     setMatchPts,
     mergeGuesses,
+    mergeGroupPredictions,
     currentUserApelido,
   } = useBolao();
 
@@ -39,10 +41,13 @@ export function useSupabaseSync() {
       const pts = await loadMatchPts();
       if (Object.keys(pts).length > 0) setMatchPts(pts);
 
-      // Carrega palpites do usuário atual (se identificado)
+      // Carrega palpites e previsões do usuário atual (se identificado)
       if (currentUserApelido) {
         const guesses = await loadGuesses(currentUserApelido);
         if (Object.keys(guesses).length > 0) mergeGuesses(guesses);
+
+        const { predictions, saved } = await loadGroupPredictions(currentUserApelido);
+        if (Object.keys(predictions).length > 0) mergeGroupPredictions(predictions, saved);
       }
     }
 
@@ -85,5 +90,5 @@ export function useSupabaseSync() {
       supabase.removeChannel(channel);
       clearInterval(pollId);
     };
-  }, [setParticipantes, setOfficialResults, setMatchPts, mergeGuesses, currentUserApelido]);
+  }, [setParticipantes, setOfficialResults, setMatchPts, mergeGuesses, mergeGroupPredictions, currentUserApelido]);
 }
