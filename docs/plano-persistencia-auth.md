@@ -15,7 +15,11 @@ precisar configurar SMTP**.
   `supabase/migrations/20260612120000_fase2_identidade.sql` no SQL Editor
   do Supabase ANTES do deploy** (a migração é aditiva; o app publicado
   continua funcionando até o deploy sair).
-- ⏳ Fases 3–6 — pendentes.
+- ⏳ Fases 3–6 — pendentes, rastreadas como épicas no GitHub:
+  [#10](https://github.com/Cissaeneykloster/bolao-familia-pk/issues/10) (Fase 3),
+  [#11](https://github.com/Cissaeneykloster/bolao-familia-pk/issues/11) (Fase 4),
+  [#12](https://github.com/Cissaeneykloster/bolao-familia-pk/issues/12) (Fase 5),
+  [#13](https://github.com/Cissaeneykloster/bolao-familia-pk/issues/13) (Fase 6).
 
 ---
 
