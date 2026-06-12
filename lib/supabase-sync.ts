@@ -158,11 +158,14 @@ export async function loadAllGuesses(): Promise<Record<string, Record<string, { 
 
 /** Salva ou atualiza um palpite */
 export async function upsertGuess(apelido: string, matchId: string, a: number, b: number) {
+  // onConflict é obrigatório: a PK é um UUID gerado, então sem ele o
+  // re-save do mesmo jogo violaria o UNIQUE(apelido, match_id)
   const { error } = await supabase.from("guesses").upsert({
     apelido, match_id: matchId, gols_a: a, gols_b: b,
     updated_at: new Date().toISOString(),
-  });
+  }, { onConflict: "apelido,match_id" });
   if (error) console.error("[SB] upsertGuess:", error.message);
+  return !error;
 }
 
 // ── Previsão dos grupos ───────────────────────────────────────────
