@@ -14,7 +14,7 @@ import { arePredictionsLocked, calcGroupPredictionPts } from "@/lib/standings";
 type Tab = "grupos" | "jogos";
 
 export function PalpitesScreen() {
-  const { guesses, resultFix, groupPredictions, groupPredictionsSaved, addFeedEvent, officialResults } = useBolao();
+  const { guesses, resultFix, groupPredictions, groupPredictionsSaved, addFeedEvent, officialResults, currentUserApelido } = useBolao();
   const { show } = useToast();
   const { fire } = useConfetti();
 
@@ -66,6 +66,18 @@ export function PalpitesScreen() {
 
   return (
     <div className="animate-screen-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+      {/* ── Aviso: sem identificação, palpites não vão para o servidor ── */}
+      {!currentUserApelido && (
+        <div style={{
+          padding: "10px 14px", borderRadius: "var(--radius)",
+          background: "rgba(255,216,77,0.08)", border: "1px solid rgba(255,216,77,0.35)",
+          fontSize: 12, color: "var(--warn)",
+        }}>
+          ⚠️ Você não está identificado — seus palpites ficam salvos só neste
+          aparelho. Abra o app pelo seu link de acesso para salvá-los na nuvem.
+        </div>
+      )}
 
       {/* ── Tabs ── */}
       <div style={{ display: "flex", gap: 8 }}>

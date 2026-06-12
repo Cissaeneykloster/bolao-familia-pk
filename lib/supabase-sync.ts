@@ -164,3 +164,43 @@ export async function upsertGuess(apelido: string, matchId: string, a: number, b
   });
   if (error) console.error("[SB] upsertGuess:", error.message);
 }
+
+// ── Previsão dos grupos ───────────────────────────────────────────
+
+export interface GroupPredictionsData {
+  predictions: Record<string, { first: string; second: string }>;
+  saved: boolean;
+}
+
+/** Carrega as previsões de grupos do participante */
+export async function loadGroupPredictions(apelido: string): Promise<GroupPredictionsData> {
+  const { data, error } = await supabase
+    .from("group_predictions")
+    .select("*")
+    .eq("apelido", apelido);
+  if (error) {
+    console.error("[SB] loadGroupPredictions:", error.message);
+    return { predictions: {}, saved: false };
+  }
+
+  return {
+    predictions: Object.fromEntries(
+      (data ?? []).map((r) => [r.grupo_copa, { first: r.first_team, second: r.second_team }])
+    ),
+    saved: (data ?? []).some((r) => r.saved),
+  };
+}
+
+/** Grava todas as previsões do participante de uma vez (upsert em lote) */
+export async function upsertGroupPredictions(
+  apelido: string,
+  predictions: Record<string, { first: string; second: string }>,
+  saved: boolean,
+) {
+  const rows = Object.entries(predictions).map(([grupo_copa, p]) => ({
+    apelido, grupo_copa, first_team: p.first, second_team: p.second, saved,
+  }));
+  if (rows.length === 0) return;
+  const { error } = await supabase.from("group_predictions").upsert(rows);
+  if (error) console.error("[SB] upsertGroupPredictions:", error.message);
+}

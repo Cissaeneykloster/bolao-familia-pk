@@ -6,6 +6,7 @@ import type { Draw, ChallengeRecord, FeedEvent } from "./types";
 import type { Participante } from "./mock-data";
 import type { DesafioCat } from "./types";
 import { DESAFIO_CATS as DEFAULT_CATS } from "./mock-data";
+import { upsertGuess, upsertGroupPredictions } from "./supabase-sync";
 
 // ── Tipos do estado ───────────────────────────────────────────────
 
@@ -98,6 +99,10 @@ interface BolaoState {
   // Previsão dos grupos
   setGroupPrediction: (group: string, first: string, second: string) => void;
   saveGroupPredictions: () => void;
+  mergeGroupPredictions: (
+    preds: Record<string, { first: string; second: string }>,
+    saved: boolean,
+  ) => void;
 
   // Feed
   addFeedEvent: (event: Omit<FeedEvent, "id" | "timestamp">) => void;
@@ -196,7 +201,7 @@ const initialState = {
 
 export const useBolao = create<BolaoState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...initialState,
 
       setStyle: (group, val) => set({ [group]: val }),
@@ -215,7 +220,13 @@ export const useBolao = create<BolaoState>()(
         }),
 
       saveGuess: (id) => {
-        void id;
+        const { currentUserApelido, guesses } = get();
+        const g = guesses[id];
+        // Persiste no Supabase quando o participante está identificado;
+        // sem identificação o palpite fica apenas neste dispositivo
+        if (currentUserApelido && g) {
+          void upsertGuess(currentUserApelido, id, g.a, g.b);
+        }
         set((state) => ({ guesses: { ...state.guesses } }));
       },
 
@@ -296,7 +307,16 @@ export const useBolao = create<BolaoState>()(
       setParticipantes: (p) => set({ participantes: p }),
       setOfficialResults: (r) => set({ officialResults: r }),
       setMatchPts: (pts) => set({ matchPts: pts }),
-      mergeGuesses: (g) => set((s) => ({ guesses: { ...s.guesses, ...g } })),
+      mergeGuesses: (g) =>
+        set((s) => {
+          // Servidor vence em jogos travados (resultado oficial lançado);
+          // local vence onde há rascunho ainda não sincronizado
+          const merged = { ...s.guesses };
+          for (const [id, guess] of Object.entries(g)) {
+            if (s.officialResults[id] || !merged[id]) merged[id] = guess;
+          }
+          return { guesses: merged };
+        }),
 
       setGroupPrediction: (group, first, second) =>
         set((s) => {
@@ -306,11 +326,31 @@ export const useBolao = create<BolaoState>()(
           };
         }),
 
-      saveGroupPredictions: () =>
-        set(() => ({
+      saveGroupPredictions: () => {
+        const { currentUserApelido, groupPredictions } = get();
+        if (currentUserApelido) {
+          void upsertGroupPredictions(currentUserApelido, groupPredictions, true);
+        }
+        set({
           groupPredictionsSaved: true,
           groupPredictionsSavedAt: Date.now(),
-        })),
+        });
+      },
+
+      mergeGroupPredictions: (preds, saved) =>
+        set((s) => {
+          // Previsões travadas no servidor são autoritativas;
+          // rascunhos locais vencem enquanto não houver trava
+          if (saved) {
+            return {
+              groupPredictions: preds,
+              groupPredictionsSaved: true,
+              groupPredictionsSavedAt: s.groupPredictionsSavedAt ?? Date.now(),
+            };
+          }
+          if (s.groupPredictionsSaved) return {};
+          return { groupPredictions: { ...preds, ...s.groupPredictions } };
+        }),
 
       addFeedEvent: (event) =>
         set((s) => ({
