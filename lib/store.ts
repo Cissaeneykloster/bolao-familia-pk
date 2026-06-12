@@ -7,6 +7,7 @@ import type { Participante } from "./mock-data";
 import type { DesafioCat } from "./types";
 import { DESAFIO_CATS as DEFAULT_CATS } from "./mock-data";
 import { upsertGuess, upsertGroupPredictions } from "./supabase-sync";
+import { breakdown } from "./scoring";
 
 // ── Tipos do estado ───────────────────────────────────────────────
 
@@ -133,12 +134,13 @@ interface BolaoState {
   resetAdminDelta: (name: string) => void;
   setBetFix: (id: string, score: { a: number; b: number }) => void;
   // Salva resultado E recalcula pontos (exceto treinos — não contam para ranking)
+  // matchGuesses: palpites DESTE jogo por apelido (loadAllGuesses(...)[matchId])
   saveResultAndCalcPts: (
     matchId: string,
     score: { sa: number; sb: number },
     participantes: import("./mock-data").Participante[],
     grupoId: string,
-    guesses: Record<string, { a: number; b: number }>,
+    matchGuesses: Record<string, { a: number; b: number }>,
     matchPhase: import("./types").MatchPhase,
     isTraining?: boolean,
   ) => void;
@@ -412,7 +414,7 @@ export const useBolao = create<BolaoState>()(
 
       resetMatchPts: () => set({ matchPts: {} }),
 
-      saveResultAndCalcPts: (matchId, score, participantes, _grupoId, guesses, matchPhase, isTraining = false) =>
+      saveResultAndCalcPts: (matchId, score, participantes, _grupoId, matchGuesses, matchPhase, isTraining = false) =>
         set((state) => {
           // Treinos NÃO calculam pontos — só salvam o resultado oficial
           if (isTraining) {
@@ -422,39 +424,23 @@ export const useBolao = create<BolaoState>()(
             };
           }
 
-          const { breakdown: bkd } = require("./scoring");
           const ativos = participantes.filter((p) => p.ativo);
+
+          // Pontos de um participante para um placar: palpite real de cada
+          // um (vindo do Supabase via loadAllGuesses); sem palpite = -3
+          const ptsDe = (apelido: string, sc: { sa: number; sb: number }): number => {
+            const g = matchGuesses[apelido];
+            return g ? breakdown(sc, { a: g.a, b: g.b }, matchPhase).total : -3;
+          };
 
           // Se já existe resultado anterior, estorna os pontos antigos antes de recalcular
           const newMatchPts = { ...state.matchPts };
           const prevScore = state.officialResults[matchId];
 
-          if (prevScore) {
-            // Estorna pontos do resultado anterior
-            for (const part of ativos) {
-              const g = state.guesses[matchId] ?? guesses[matchId];
-              let oldPts: number;
-              if (g) {
-                const bd = bkd({ sa: prevScore.sa, sb: prevScore.sb }, { a: g.a, b: g.b }, matchPhase);
-                oldPts = bd.total;
-              } else {
-                oldPts = -3;
-              }
-              newMatchPts[part.apelido] = (newMatchPts[part.apelido] ?? 0) - oldPts;
-            }
-          }
-
-          // Calcula e aplica pontos do novo resultado
           for (const part of ativos) {
-            const g = state.guesses[matchId] ?? guesses[matchId];
-            let pts: number;
-            if (g) {
-              const bd = bkd({ sa: score.sa, sb: score.sb }, { a: g.a, b: g.b }, matchPhase);
-              pts = bd.total;
-            } else {
-              pts = -3;
-            }
-            newMatchPts[part.apelido] = (newMatchPts[part.apelido] ?? 0) + pts;
+            const estorno = prevScore ? ptsDe(part.apelido, prevScore) : 0;
+            newMatchPts[part.apelido] =
+              (newMatchPts[part.apelido] ?? 0) - estorno + ptsDe(part.apelido, score);
           }
 
           return {

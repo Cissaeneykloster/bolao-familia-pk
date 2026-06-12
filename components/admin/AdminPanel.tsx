@@ -9,6 +9,7 @@ import { useDesafioCats } from "@/lib/useDesafios";
 import {
   upsertParticipante, deleteParticipante, updateParticipanteDb,
   upsertOfficialResult, upsertMatchPtsBatch, syncAllOfficialResults, resetMatchPtsDb,
+  loadAllGuesses,
 } from "@/lib/supabase-sync";
 
 type AdminTab = "pontos" | "palpites" | "resultados" | "participantes" | "desafios";
@@ -305,7 +306,7 @@ function TabPalpites() {
 
 // ── Aba Resultados ───────────────────────────────────────────────
 function TabResultados() {
-  const { resultFix, setResultFix, saveResultAndCalcPts, addFeedEvent, participantes, adminGrupoId, guesses, officialResults } = useBolao();
+  const { resultFix, setResultFix, saveResultAndCalcPts, addFeedEvent, participantes, adminGrupoId, officialResults } = useBolao();
   const [drafts, setDrafts] = useState<Record<string, { sa: number; sb: number }>>({});
   const [saved, setSaved] = useState<string | null>(null);
   const [syncingResults, setSyncingResults] = useState(false);
@@ -410,7 +411,9 @@ function TabResultados() {
               <button
                 aria-label={isOfficial ? `Alterar resultado ${m.id}` : `Salvar resultado ${m.id}`}
                 onClick={async () => {
-                  saveResultAndCalcPts(m.id, draft, participantes, adminGrupoId ?? "", guesses, m.phase, !!m.training);
+                  // Palpites reais deste jogo, de todos os participantes (Supabase)
+                  const allGuesses = await loadAllGuesses();
+                  saveResultAndCalcPts(m.id, draft, participantes, adminGrupoId ?? "", allGuesses[m.id] ?? {}, m.phase, !!m.training);
                   // Grava no Supabase (em background)
                   upsertOfficialResult(m.id, draft.sa, draft.sb);
                   // Depois que o store recalculou, sincroniza os pontos
