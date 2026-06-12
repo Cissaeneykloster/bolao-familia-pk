@@ -153,7 +153,7 @@ function TabPontos() {
             const allGuesses = await loadAllGuesses();
             recalcAllMatchPts(participantes, allGuesses);
             const newPts = useBolao.getState().matchPts;
-            await upsertMatchPtsBatch(newPts);
+            await upsertMatchPtsBatch(newPts, participantes);
             setRecalcMsg("✅ Ranking recalculado e enviado a todos!");
             setRecalcing(false);
             setTimeout(() => setRecalcMsg(""), 5000);
@@ -188,7 +188,7 @@ function TabPontos() {
               // Também zera o matchPts de todos os participantes no Supabase
               const zeroMap: Record<string, number> = {};
               participantes.filter((p) => p.ativo).forEach((p) => { zeroMap[p.apelido] = 0; });
-              await upsertMatchPtsBatch(zeroMap);
+              await upsertMatchPtsBatch(zeroMap, participantes);
             }}
             style={{
               padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 700,
@@ -382,7 +382,7 @@ function TabResultados() {
             const n = await syncAllOfficialResults(officialResults);
             // Também sincroniza os pontos
             const newPts = useBolao.getState().matchPts;
-            await upsertMatchPtsBatch(newPts);
+            await upsertMatchPtsBatch(newPts, useBolao.getState().participantes);
             setSyncResultMsg(`✅ ${n} resultado(s) enviados para todos!`);
             setSyncingResults(false);
             setTimeout(() => setSyncResultMsg(""), 5000);
@@ -457,7 +457,7 @@ function TabResultados() {
                   // Depois que o store recalculou, sincroniza os pontos
                   setTimeout(() => {
                     const newPts = useBolao.getState().matchPts;
-                    upsertMatchPtsBatch(newPts);
+                    upsertMatchPtsBatch(newPts, useBolao.getState().participantes);
                   }, 200);
                   addFeedEvent({
                     type: "result",

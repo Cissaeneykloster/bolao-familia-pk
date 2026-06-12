@@ -7,6 +7,29 @@
 import { supabase } from "./supabase";
 import type { Participante } from "./mock-data";
 
+// ── Identidade nas tabelas de dados (Fase 2) ─────────────────────
+// `apelido` sozinho colide entre grupos. Com o participante resolvido
+// (id + grupo), as linhas passam a ser chaveadas por participante_id e
+// o apelido fica apenas para exibição. Sem resolução (ex.: participantes
+// ainda não carregados), mantém o comportamento antigo por apelido.
+export interface ParticipanteKey {
+  apelido: string;
+  participanteId?: string | null;
+  grupoId?: string | null;
+}
+
+// Colunas de identidade do upsert — só entram quando o participante está
+// resolvido (o PostgREST exige as mesmas colunas em todas as linhas)
+function identityColumns(key: ParticipanteKey) {
+  return key.participanteId
+    ? { participante_id: key.participanteId, grupo_id: key.grupoId ?? null }
+    : {};
+}
+
+function guessConflict(key: ParticipanteKey) {
+  return key.participanteId ? "participante_id,match_id" : "apelido,match_id";
+}
+
 // ── Timestamp em horário de Brasília ─────────────────────────────
 // Brasília não tem horário de verão desde 2019 → offset fixo -03:00.
 // O Postgres guarda o mesmo instante; o offset explícito documenta o fuso.
@@ -35,6 +58,7 @@ export async function loadParticipantes(): Promise<Participante[]> {
     telefone: r.telefone ?? "",
     token: r.token,
     ativo: r.ativo,
+    userId: r.user_id ?? null,
   }));
 }
 
@@ -127,24 +151,47 @@ export async function resetMatchPtsDb() {
   if (error) console.error("[SB] resetMatchPtsDb:", error.message);
 }
 
+// grupo_id por apelido — só para apelidos inequívocos entre grupos
+// (o mesmo critério do backfill da migração da Fase 2)
+function grupoPorApelido(participantes: Participante[]): Map<string, string | null> {
+  const m = new Map<string, string | null>();
+  for (const p of participantes) m.set(p.apelido, m.has(p.apelido) ? null : p.grupoId);
+  return m;
+}
+
 /** Grava pontos de vários participantes de uma vez */
-export async function upsertMatchPtsBatch(ptsMap: Record<string, number>) {
-  const rows = Object.entries(ptsMap).map(([apelido, pts]) => ({
-    apelido, pts, updated_at: nowBrasilia(),
-  }));
-  if (rows.length === 0) return;
-  const { error } = await supabase.from("match_pts").upsert(rows);
-  if (error) console.error("[SB] upsertMatchPtsBatch:", error.message);
+export async function upsertMatchPtsBatch(
+  ptsMap: Record<string, number>,
+  participantes: Participante[] = [],
+) {
+  const grupoDe = grupoPorApelido(participantes);
+  const entries = Object.entries(ptsMap);
+  // O upsert exige as mesmas colunas em todas as linhas → dois lotes,
+  // para não sobrescrever com NULL um grupo_id já preenchido no banco
+  const comGrupo = entries
+    .filter(([apelido]) => grupoDe.get(apelido))
+    .map(([apelido, pts]) => ({
+      apelido, grupo_id: grupoDe.get(apelido), pts, updated_at: nowBrasilia(),
+    }));
+  const semGrupo = entries
+    .filter(([apelido]) => !grupoDe.get(apelido))
+    .map(([apelido, pts]) => ({ apelido, pts, updated_at: nowBrasilia() }));
+
+  for (const rows of [comGrupo, semGrupo]) {
+    if (rows.length === 0) continue;
+    const { error } = await supabase.from("match_pts").upsert(rows);
+    if (error) console.error("[SB] upsertMatchPtsBatch:", error.message);
+  }
 }
 
 // ── Palpites ──────────────────────────────────────────────────────
 
 /** Carrega palpites do participante atual */
-export async function loadGuesses(apelido: string): Promise<Record<string, { a: number; b: number }>> {
-  const { data, error } = await supabase
-    .from("guesses")
-    .select("*")
-    .eq("apelido", apelido);
+export async function loadGuesses(key: ParticipanteKey): Promise<Record<string, { a: number; b: number }>> {
+  const query = supabase.from("guesses").select("*");
+  const { data, error } = await (key.participanteId
+    ? query.eq("participante_id", key.participanteId)
+    : query.eq("apelido", key.apelido));
   if (error) { console.error("[SB] loadGuesses:", error.message); return {}; }
 
   return Object.fromEntries((data ?? []).map((r) => [r.match_id, { a: r.gols_a, b: r.gols_b }]));
@@ -170,32 +217,34 @@ export async function loadAllGuesses(): Promise<Record<string, Record<string, { 
  * servidor ainda não tem — inclusive encerrados — e retorna quantos subiram.
  */
 export async function backfillGuesses(
-  apelido: string,
+  key: ParticipanteKey,
   localGuesses: Record<string, { a: number; b: number }>,
   serverGuesses: Record<string, { a: number; b: number }>,
 ): Promise<number> {
   const rows = Object.entries(localGuesses)
     .filter(([matchId]) => !(matchId in serverGuesses))
     .map(([match_id, g]) => ({
-      apelido, match_id, gols_a: g.a, gols_b: g.b, updated_at: nowBrasilia(),
+      apelido: key.apelido, ...identityColumns(key),
+      match_id, gols_a: g.a, gols_b: g.b, updated_at: nowBrasilia(),
     }));
   if (rows.length === 0) return 0;
 
   const { error } = await supabase
     .from("guesses")
-    .upsert(rows, { onConflict: "apelido,match_id" });
+    .upsert(rows, { onConflict: guessConflict(key) });
   if (error) { console.error("[SB] backfillGuesses:", error.message); return 0; }
   return rows.length;
 }
 
 /** Salva ou atualiza um palpite */
-export async function upsertGuess(apelido: string, matchId: string, a: number, b: number) {
+export async function upsertGuess(key: ParticipanteKey, matchId: string, a: number, b: number) {
   // onConflict é obrigatório: a PK é um UUID gerado, então sem ele o
-  // re-save do mesmo jogo violaria o UNIQUE(apelido, match_id)
+  // re-save do mesmo jogo violaria a chave única do palpite
   const { error } = await supabase.from("guesses").upsert({
-    apelido, match_id: matchId, gols_a: a, gols_b: b,
+    apelido: key.apelido, ...identityColumns(key),
+    match_id: matchId, gols_a: a, gols_b: b,
     updated_at: nowBrasilia(),
-  }, { onConflict: "apelido,match_id" });
+  }, { onConflict: guessConflict(key) });
   if (error) console.error("[SB] upsertGuess:", error.message);
   return !error;
 }
@@ -208,11 +257,11 @@ export interface GroupPredictionsData {
 }
 
 /** Carrega as previsões de grupos do participante */
-export async function loadGroupPredictions(apelido: string): Promise<GroupPredictionsData> {
-  const { data, error } = await supabase
-    .from("group_predictions")
-    .select("*")
-    .eq("apelido", apelido);
+export async function loadGroupPredictions(key: ParticipanteKey): Promise<GroupPredictionsData> {
+  const query = supabase.from("group_predictions").select("*");
+  const { data, error } = await (key.participanteId
+    ? query.eq("participante_id", key.participanteId)
+    : query.eq("apelido", key.apelido));
   if (error) {
     console.error("[SB] loadGroupPredictions:", error.message);
     return { predictions: {}, saved: false };
@@ -228,14 +277,18 @@ export async function loadGroupPredictions(apelido: string): Promise<GroupPredic
 
 /** Grava todas as previsões do participante de uma vez (upsert em lote) */
 export async function upsertGroupPredictions(
-  apelido: string,
+  key: ParticipanteKey,
   predictions: Record<string, { first: string; second: string }>,
   saved: boolean,
 ) {
   const rows = Object.entries(predictions).map(([grupo_copa, p]) => ({
-    apelido, grupo_copa, first_team: p.first, second_team: p.second, saved,
+    apelido: key.apelido, ...identityColumns(key),
+    grupo_copa, first_team: p.first, second_team: p.second, saved,
   }));
   if (rows.length === 0) return;
-  const { error } = await supabase.from("group_predictions").upsert(rows);
+  // Sem participante resolvido o conflito cai na PK (apelido, grupo_copa)
+  const { error } = key.participanteId
+    ? await supabase.from("group_predictions").upsert(rows, { onConflict: "participante_id,grupo_copa" })
+    : await supabase.from("group_predictions").upsert(rows);
   if (error) console.error("[SB] upsertGroupPredictions:", error.message);
 }
