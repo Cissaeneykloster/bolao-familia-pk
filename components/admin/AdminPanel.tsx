@@ -120,7 +120,9 @@ function TabDesafios() {
 
 // ── Aba Pontos ───────────────────────────────────────────────────
 function TabPontos() {
-  const { adminDelta, setAdminDelta, resetAdminDelta, desafios, comboBank, penalty, participantes, adminGrupoId, resetMatchPts, matchPts } = useBolao();
+  const { adminDelta, setAdminDelta, resetAdminDelta, desafios, comboBank, penalty, participantes, adminGrupoId, resetMatchPts, matchPts, recalcAllMatchPts } = useBolao();
+  const [recalcing, setRecalcing] = useState(false);
+  const [recalcMsg, setRecalcMsg] = useState("");
   const DESAFIO_CATS = useDesafioCats();
   const bonus = bonusPts(desafios, DESAFIO_CATS, comboBank, penalty);
   const meusPart = participantes.filter((p) => p.grupoId === adminGrupoId && p.ativo);
@@ -131,6 +133,42 @@ function TabPontos() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {/* Recalcular ranking a partir do Supabase */}
+      <div style={{
+        padding: "10px 14px", borderRadius: 10,
+        background: "rgba(0,255,135,0.05)", border: "1px solid rgba(0,255,135,0.2)",
+        display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
+      }}>
+        <div>
+          <p style={{ fontSize: 12, fontWeight: 700, color: "var(--neon)", margin: 0 }}>♻️ Recalcular ranking</p>
+          <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>
+            Refaz os pontos de todos os jogos com os palpites reais do Supabase
+          </p>
+          {recalcMsg && <p style={{ fontSize: 11, color: "var(--neon)", margin: "2px 0 0" }}>{recalcMsg}</p>}
+        </div>
+        <button
+          onClick={async () => {
+            setRecalcing(true);
+            setRecalcMsg("Recalculando...");
+            const allGuesses = await loadAllGuesses();
+            recalcAllMatchPts(participantes, allGuesses);
+            const newPts = useBolao.getState().matchPts;
+            await upsertMatchPtsBatch(newPts);
+            setRecalcMsg("✅ Ranking recalculado e enviado a todos!");
+            setRecalcing(false);
+            setTimeout(() => setRecalcMsg(""), 5000);
+          }}
+          disabled={recalcing}
+          style={{
+            padding: "7px 12px", borderRadius: 7, fontSize: 11, fontWeight: 700,
+            border: "1px solid rgba(0,255,135,0.4)", background: "rgba(0,255,135,0.1)",
+            color: "var(--neon)", cursor: "pointer", whiteSpace: "nowrap",
+          }}
+        >
+          ♻️ Recalcular
+        </button>
+      </div>
+
       {/* Botão zerar ranking */}
       {totalMatchPts > 0 && (
         <div style={{
