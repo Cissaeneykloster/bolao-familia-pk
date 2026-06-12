@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useBolao } from "@/lib/store";
+import { useBolao, currentParticipanteKey } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import {
   loadParticipantes, loadOfficialResults, loadMatchPts, loadGuesses,
@@ -41,21 +41,24 @@ export function useSupabaseSync() {
       const pts = await loadMatchPts();
       if (Object.keys(pts).length > 0) setMatchPts(pts);
 
-      // Carrega palpites e previsões do usuário atual (se identificado)
-      if (currentUserApelido) {
+      // Carrega palpites e previsões do usuário atual (se identificado).
+      // A chave é resolvida com a lista de participantes recém-carregada,
+      // para ler/gravar por participante_id (apelido colide entre grupos).
+      const key = currentParticipanteKey(useBolao.getState());
+      if (key) {
         // Snapshot do que existe só neste aparelho, antes do merge
         const localGuesses = { ...useBolao.getState().guesses };
         const localPreds = { ...useBolao.getState().groupPredictions };
         const localPredsSaved = useBolao.getState().groupPredictionsSaved;
 
-        const guesses = await loadGuesses(currentUserApelido);
+        const guesses = await loadGuesses(key);
         if (Object.keys(guesses).length > 0) mergeGuesses(guesses);
 
         // Recupera para o servidor os palpites feitos antes da persistência
-        const recovered = await backfillGuesses(currentUserApelido, localGuesses, guesses);
+        const recovered = await backfillGuesses(key, localGuesses, guesses);
         if (recovered > 0) console.log(`[SB] backfill: ${recovered} palpite(s) recuperado(s)`);
 
-        const { predictions, saved } = await loadGroupPredictions(currentUserApelido);
+        const { predictions, saved } = await loadGroupPredictions(key);
         if (Object.keys(predictions).length > 0) mergeGroupPredictions(predictions, saved);
 
         // Recupera previsões locais que o servidor ainda não tem
@@ -63,7 +66,7 @@ export function useSupabaseSync() {
           Object.entries(localPreds).filter(([g]) => !(g in predictions))
         );
         if (Object.keys(missingPreds).length > 0) {
-          await upsertGroupPredictions(currentUserApelido, missingPreds, localPredsSaved || saved);
+          await upsertGroupPredictions(key, missingPreds, localPredsSaved || saved);
         }
       }
     }

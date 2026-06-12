@@ -780,4 +780,5 @@ export interface Participante {
   telefone: string;
   token: string;      // token de acesso único (gerado pelo admin)
   ativo: boolean;
+  userId?: string | null; // vínculo com o Supabase Auth (Fase 3)
 }

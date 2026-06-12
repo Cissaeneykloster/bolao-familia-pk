@@ -9,6 +9,14 @@ O admin continua copiando o link e mandando no WhatsApp, como faz hoje —
 `auth.admin.generateLink({ type: "invite" })` devolve o link pronto, **sem
 precisar configurar SMTP**.
 
+**Status (12/jun/2026):**
+- ✅ **Fase 1** — entregue (PRs #4–#8).
+- ✅ **Fase 2** — código + migração prontos. **Executar
+  `supabase/migrations/20260612120000_fase2_identidade.sql` no SQL Editor
+  do Supabase ANTES do deploy** (a migração é aditiva; o app publicado
+  continua funcionando até o deploy sair).
+- ⏳ Fases 3–6 — pendentes.
+
 ---
 
 ## Fase 1 — Persistência imediata de palpites e previsões (quick win)
@@ -34,9 +42,17 @@ navegador. Risco baixo; nenhuma mudança de schema.
 
 ---
 
-## Fase 2 — Schema e fundações de identidade
+## Fase 2 — Schema e fundações de identidade ✅
 
 Preparar o banco para auth sem ainda mudar o fluxo do usuário.
+
+> **Como ficou:** migração em `supabase/migrations/20260612120000_…`.
+> As chaves antigas (UNIQUE `apelido,match_id`, PKs por apelido) foram
+> mantidas de propósito para não quebrar clientes já publicados — a
+> remoção fica para a Fase 5. O código grava as duas chaves e lê por
+> `participante_id` quando o participante está resolvido. A tabela
+> `admins` foi criada vazia (sem policy RLS — só a service role acessa);
+> o array `ADMINS` sai do bundle na Fase 3.
 
 1. **Migração de schema** (novo arquivo `supabase/migrations/...sql`):
    - `participantes`: adicionar `user_id UUID UNIQUE REFERENCES auth.users(id)`.

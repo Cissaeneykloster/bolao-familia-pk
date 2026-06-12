@@ -6,7 +6,7 @@ import type { Draw, ChallengeRecord, FeedEvent } from "./types";
 import type { Participante } from "./mock-data";
 import type { DesafioCat } from "./types";
 import { DESAFIO_CATS as DEFAULT_CATS, MATCHES } from "./mock-data";
-import { upsertGuess, upsertGroupPredictions } from "./supabase-sync";
+import { upsertGuess, upsertGroupPredictions, type ParticipanteKey } from "./supabase-sync";
 import { breakdown } from "./scoring";
 import { isMatchLocked } from "./standings";
 
@@ -165,6 +165,28 @@ interface BolaoState {
   migrateParticipantes: (grupoId: string) => void;
 }
 
+// ── Identidade para gravação no Supabase (Fase 2) ─────────────────
+// Resolve o participante atual (id + grupo) para chavear as escritas por
+// participante_id. Sem resolução segura (lista ainda não carregada ou
+// apelido ambíguo), devolve só o apelido — comportamento antigo.
+export function currentParticipanteKey(s: {
+  currentUserApelido: string | null;
+  currentGrupoId: string | null;
+  participantes: Participante[];
+}): ParticipanteKey | null {
+  const { currentUserApelido: apelido, currentGrupoId, participantes } = s;
+  if (!apelido) return null;
+  const candidatos = participantes.filter(
+    (p) => p.apelido === apelido && (!currentGrupoId || p.grupoId === currentGrupoId),
+  );
+  const p = candidatos.length === 1 ? candidatos[0] : null;
+  return {
+    apelido,
+    participanteId: p?.id ?? null,
+    grupoId: p?.grupoId ?? currentGrupoId ?? null,
+  };
+}
+
 // ── Valores iniciais ──────────────────────────────────────────────
 
 const initialState = {
@@ -233,12 +255,12 @@ export const useBolao = create<BolaoState>()(
         const match = MATCHES.find((m) => m.id === id);
         if (match && isMatchLocked(match)) return;
 
-        const { currentUserApelido, guesses } = get();
-        const g = guesses[id];
+        const g = get().guesses[id];
         // Persiste no Supabase quando o participante está identificado;
         // sem identificação o palpite fica apenas neste dispositivo
-        if (currentUserApelido && g) {
-          void upsertGuess(currentUserApelido, id, g.a, g.b);
+        const key = currentParticipanteKey(get());
+        if (key && g) {
+          void upsertGuess(key, id, g.a, g.b);
         }
         set((state) => ({ guesses: { ...state.guesses } }));
       },
@@ -340,9 +362,9 @@ export const useBolao = create<BolaoState>()(
         }),
 
       saveGroupPredictions: () => {
-        const { currentUserApelido, groupPredictions } = get();
-        if (currentUserApelido) {
-          void upsertGroupPredictions(currentUserApelido, groupPredictions, true);
+        const key = currentParticipanteKey(get());
+        if (key) {
+          void upsertGroupPredictions(key, get().groupPredictions, true);
         }
         set({
           groupPredictionsSaved: true,

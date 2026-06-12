@@ -15,11 +15,16 @@ beforeEach(() => {
     guesses: {},
     officialResults: {},
     currentUserApelido: null,
+    currentGrupoId: null,
+    participantes: [],
     groupPredictions: {},
     groupPredictionsSaved: false,
     groupPredictionsSavedAt: null,
   });
 });
+
+// Chave enviada ao Supabase quando só o apelido é conhecido
+const soApelido = (apelido: string) => ({ apelido, participanteId: null, grupoId: null });
 
 // ── saveGuess → Supabase ──────────────────────────────────────────
 
@@ -27,7 +32,36 @@ describe("saveGuess — persistência no Supabase", () => {
   it("grava no Supabase quando o participante está identificado", () => {
     useBolao.setState({ currentUserApelido: "Ney", guesses: { m1: { a: 2, b: 1 } } });
     useBolao.getState().saveGuess("m1");
-    expect(upsertGuess).toHaveBeenCalledWith("Ney", "m1", 2, 1);
+    expect(upsertGuess).toHaveBeenCalledWith(soApelido("Ney"), "m1", 2, 1);
+  });
+
+  it("participante resolvido na lista: grava com participante_id e grupo", () => {
+    useBolao.setState({
+      currentUserApelido: "Ney",
+      currentGrupoId: "pk",
+      participantes: [
+        { id: "p1", grupoId: "pk", nome: "Ney", apelido: "Ney", email: "", telefone: "", token: "t", ativo: true },
+      ],
+      guesses: { m1: { a: 2, b: 1 } },
+    });
+    useBolao.getState().saveGuess("m1");
+    expect(upsertGuess).toHaveBeenCalledWith(
+      { apelido: "Ney", participanteId: "p1", grupoId: "pk" }, "m1", 2, 1,
+    );
+  });
+
+  it("apelido repetido entre grupos sem grupo ativo: cai no modo legado (só apelido)", () => {
+    useBolao.setState({
+      currentUserApelido: "Ney",
+      currentGrupoId: null,
+      participantes: [
+        { id: "p1", grupoId: "pk", nome: "Ney", apelido: "Ney", email: "", telefone: "", token: "t", ativo: true },
+        { id: "p2", grupoId: "cissa", nome: "Ney", apelido: "Ney", email: "", telefone: "", token: "t", ativo: true },
+      ],
+      guesses: { m1: { a: 2, b: 1 } },
+    });
+    useBolao.getState().saveGuess("m1");
+    expect(upsertGuess).toHaveBeenCalledWith(soApelido("Ney"), "m1", 2, 1);
   });
 
   it("NÃO grava quando o participante não está identificado", () => {
@@ -54,7 +88,7 @@ describe("saveGroupPredictions — persistência no Supabase", () => {
   it("grava todas as previsões com saved=true quando identificado", () => {
     useBolao.setState({ currentUserApelido: "Ney", groupPredictions: preds });
     useBolao.getState().saveGroupPredictions();
-    expect(upsertGroupPredictions).toHaveBeenCalledWith("Ney", preds, true);
+    expect(upsertGroupPredictions).toHaveBeenCalledWith(soApelido("Ney"), preds, true);
     expect(useBolao.getState().groupPredictionsSaved).toBe(true);
   });
 
@@ -183,6 +217,6 @@ describe("saveGuess — respeita a trava do kickoff", () => {
 
     useBolao.setState({ currentUserApelido: "Nino", guesses: { [future!.id]: { a: 2, b: 2 } } });
     useBolao.getState().saveGuess(future!.id);
-    expect(upsertGuess).toHaveBeenCalledWith("Nino", future!.id, 2, 2);
+    expect(upsertGuess).toHaveBeenCalledWith(soApelido("Nino"), future!.id, 2, 2);
   });
 });
