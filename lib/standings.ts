@@ -6,12 +6,19 @@ import type { Match, GroupTeam, Group } from "./types";
 import { mScore } from "./scoring";
 import { EXTRA_MS_AFTER_KICKOFF } from "./mock-data";
 
-/** Timestamp do kickoff do primeiro jogo da Copa (trava das previsões) */
+/** Timestamp do kickoff do primeiro jogo da Copa */
 export const COPA_FIRST_KICKOFF_MS = new Date("2026-06-11T19:00:00Z").getTime(); // 11/Jun 16h BRT = 19h UTC
+
+/**
+ * Prazo final para enviar/editar a Previsão dos Grupos.
+ * Estendido para +10 dias após o kickoff original, dando mais tempo ao pessoal palpitar.
+ */
+export const GROUP_PREDICTIONS_DEADLINE_MS =
+  COPA_FIRST_KICKOFF_MS + 10 * 24 * 60 * 60 * 1000; // 21/Jun 16h BRT
 
 /** Verifica se as previsões dos grupos estão travadas */
 export function arePredictionsLocked(saved: boolean, now = Date.now()): boolean {
-  return saved || now >= COPA_FIRST_KICKOFF_MS;
+  return saved || now >= GROUP_PREDICTIONS_DEADLINE_MS;
 }
 
 /**
