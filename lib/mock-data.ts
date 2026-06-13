@@ -166,16 +166,16 @@ export const MATCHES: Match[] = [
 
   { id:"ga2r2", phase:"grupos", group:"Grupo A", rodada:2, status:"upcoming",
     a:{name:"México",      flag:ENG.MEX}, b:{name:"Coreia do Sul", flag:ENG.KOR},
-    kickoff:brt("2026-06-18",23,0), label:"18/Jun 23h00" },
+    kickoff:brt("2026-06-18",22,0), label:"18/Jun 22h00" },
 
   // Rodada 3 (simultâneos)
   { id:"ga1r3", phase:"grupos", group:"Grupo A", rodada:3, status:"upcoming",
     a:{name:"México",      flag:ENG.MEX}, b:{name:"Rep. Tcheca", flag:F.CZE},
-    kickoff:brt("2026-06-22",22,0), label:"22/Jun 22h00" },
+    kickoff:brt("2026-06-24",22,0), label:"24/Jun 22h00" },
 
   { id:"ga2r3", phase:"grupos", group:"Grupo A", rodada:3, status:"upcoming",
     a:{name:"África do Sul", flag:F.RSA}, b:{name:"Coreia do Sul", flag:ENG.KOR},
-    kickoff:brt("2026-06-22",22,0), label:"22/Jun 22h00" },
+    kickoff:brt("2026-06-24",22,0), label:"24/Jun 22h00" },
 
   // ── GRUPO B: Canadá, Bósnia-Herz., Qatar, Suíça ──
   // Rodada 1
@@ -199,11 +199,11 @@ export const MATCHES: Match[] = [
   // Rodada 3
   { id:"gb1r3", phase:"grupos", group:"Grupo B", rodada:3, status:"upcoming",
     a:{name:"Canadá",  flag:ENG.CAN}, b:{name:"Suíça",        flag:F.SUI},
-    kickoff:brt("2026-06-22",19,0), label:"22/Jun 19h00" },
+    kickoff:brt("2026-06-24",16,0), label:"24/Jun 16h00" },
 
   { id:"gb2r3", phase:"grupos", group:"Grupo B", rodada:3, status:"upcoming",
     a:{name:"Bósnia-Herz.", flag:F.BIH}, b:{name:"Qatar",     flag:F.QAT},
-    kickoff:brt("2026-06-22",19,0), label:"22/Jun 19h00" },
+    kickoff:brt("2026-06-24",16,0), label:"24/Jun 16h00" },
 
   // ── GRUPO C: Brasil 🇧🇷, Marrocos, Haiti, Escócia ──
   // Rodada 1
@@ -213,12 +213,12 @@ export const MATCHES: Match[] = [
 
   { id:"gc2r1", phase:"grupos", group:"Grupo C", rodada:1, status:"upcoming",
     a:{name:"Haiti",    flag:F.HAI},   b:{name:"Escócia",  flag:F.SCO},
-    kickoff:brt("2026-06-12",19,0), label:"12/Jun 19h00" },
+    kickoff:brt("2026-06-13",22,0), label:"13/Jun 22h00" },
 
   // Rodada 2
   { id:"gc1r2", phase:"grupos", group:"Grupo C", rodada:2, status:"upcoming",
     a:{name:"Brasil",   flag:ENG.BRA}, b:{name:"Haiti",    flag:F.HAI},
-    kickoff:brt("2026-06-19",22,30), label:"19/Jun 22h30 — Filadélfia" },
+    kickoff:brt("2026-06-19",22,0), label:"19/Jun 22h00 — Filadélfia" },
 
   { id:"gc2r2", phase:"grupos", group:"Grupo C", rodada:2, status:"upcoming",
     a:{name:"Escócia",  flag:F.SCO},   b:{name:"Marrocos", flag:"🇲🇦"},
@@ -241,7 +241,7 @@ export const MATCHES: Match[] = [
 
   { id:"gd2r1", phase:"grupos", group:"Grupo D", rodada:1, status:"upcoming",
     a:{name:"Austrália", flag:F.AUS},  b:{name:"Turquia",   flag:F.TUR},
-    kickoff:brt("2026-06-13",13,0), label:"13/Jun 13h00" },
+    kickoff:brt("2026-06-14",1,0), label:"14/Jun 01h00" },
 
   // Rodada 2
   { id:"gd1r2", phase:"grupos", group:"Grupo D", rodada:2, status:"upcoming",
@@ -250,16 +250,16 @@ export const MATCHES: Match[] = [
 
   { id:"gd2r2", phase:"grupos", group:"Grupo D", rodada:2, status:"upcoming",
     a:{name:"Turquia",  flag:F.TUR},  b:{name:"Paraguai",  flag:F.PAR},
-    kickoff:brt("2026-06-19",22,0), label:"19/Jun 22h00" },
+    kickoff:brt("2026-06-20",0,0), label:"20/Jun 00h00" },
 
   // Rodada 3
   { id:"gd1r3", phase:"grupos", group:"Grupo D", rodada:3, status:"upcoming",
     a:{name:"EUA",       flag:ENG.USA}, b:{name:"Turquia",   flag:F.TUR},
-    kickoff:brt("2026-06-23",22,0), label:"23/Jun 22h00" },
+    kickoff:brt("2026-06-25",23,0), label:"25/Jun 23h00" },
 
   { id:"gd2r3", phase:"grupos", group:"Grupo D", rodada:3, status:"upcoming",
     a:{name:"Paraguai", flag:F.PAR},  b:{name:"Austrália", flag:F.AUS},
-    kickoff:brt("2026-06-23",22,0), label:"23/Jun 22h00" },
+    kickoff:brt("2026-06-25",23,0), label:"25/Jun 23h00" },
 
   // ── GRUPO E: Alemanha, Curaçao, Costa do Marfim, Equador ──
   // Rodada 1
@@ -274,20 +274,20 @@ export const MATCHES: Match[] = [
   // Rodada 2
   { id:"ge1r2", phase:"grupos", group:"Grupo E", rodada:2, status:"upcoming",
     a:{name:"Alemanha",    flag:ENG.GER}, b:{name:"C. do Marfim", flag:F.CIV},
-    kickoff:brt("2026-06-20",16,0), label:"20/Jun 16h00" },
+    kickoff:brt("2026-06-20",17,0), label:"20/Jun 17h00" },
 
   { id:"ge2r2", phase:"grupos", group:"Grupo E", rodada:2, status:"upcoming",
     a:{name:"Equador",  flag:F.ECU},   b:{name:"Curaçao",     flag:F.CUW},
-    kickoff:brt("2026-06-20",19,0), label:"20/Jun 19h00" },
+    kickoff:brt("2026-06-20",21,0), label:"20/Jun 21h00" },
 
   // Rodada 3
   { id:"ge1r3", phase:"grupos", group:"Grupo E", rodada:3, status:"upcoming",
     a:{name:"Alemanha",    flag:ENG.GER}, b:{name:"Equador",       flag:F.ECU},
-    kickoff:brt("2026-06-25",16,0), label:"25/Jun 16h00" },
+    kickoff:brt("2026-06-25",17,0), label:"25/Jun 17h00" },
 
   { id:"ge2r3", phase:"grupos", group:"Grupo E", rodada:3, status:"upcoming",
     a:{name:"Curaçao",  flag:F.CUW},  b:{name:"C. do Marfim",  flag:F.CIV},
-    kickoff:brt("2026-06-25",16,0), label:"25/Jun 16h00" },
+    kickoff:brt("2026-06-25",17,0), label:"25/Jun 17h00" },
 
   // ── GRUPO F: Holanda, Japão, Suécia, Tunísia ──
   // Rodada 1
@@ -302,30 +302,30 @@ export const MATCHES: Match[] = [
   // Rodada 2
   { id:"gf1r2", phase:"grupos", group:"Grupo F", rodada:2, status:"upcoming",
     a:{name:"Holanda",  flag:F.NED},  b:{name:"Suécia",  flag:F.SWE},
-    kickoff:brt("2026-06-20",22,0), label:"20/Jun 22h00" },
+    kickoff:brt("2026-06-20",14,0), label:"20/Jun 14h00" },
 
   { id:"gf2r2", phase:"grupos", group:"Grupo F", rodada:2, status:"upcoming",
     a:{name:"Japão",    flag:ENG.JPN}, b:{name:"Tunísia", flag:F.TUN},
-    kickoff:brt("2026-06-21",13,0), label:"21/Jun 13h00" },
+    kickoff:brt("2026-06-21",1,0), label:"21/Jun 01h00" },
 
   // Rodada 3
   { id:"gf1r3", phase:"grupos", group:"Grupo F", rodada:3, status:"upcoming",
     a:{name:"Holanda",  flag:F.NED},  b:{name:"Tunísia", flag:F.TUN},
-    kickoff:brt("2026-06-25",22,0), label:"25/Jun 22h00" },
+    kickoff:brt("2026-06-25",20,0), label:"25/Jun 20h00" },
 
   { id:"gf2r3", phase:"grupos", group:"Grupo F", rodada:3, status:"upcoming",
     a:{name:"Japão",    flag:ENG.JPN}, b:{name:"Suécia",  flag:F.SWE},
-    kickoff:brt("2026-06-25",22,0), label:"25/Jun 22h00" },
+    kickoff:brt("2026-06-25",20,0), label:"25/Jun 20h00" },
 
   // ── GRUPO G: Bélgica, Egito, Irã, Nova Zelândia ──
   // Rodada 1
   { id:"gg1r1", phase:"grupos", group:"Grupo G", rodada:1, status:"upcoming",
     a:{name:"Bélgica",      flag:F.BEL},  b:{name:"Egito",        flag:F.EGY},
-    kickoff:brt("2026-06-15",19,0), label:"15/Jun 19h00" },
+    kickoff:brt("2026-06-15",16,0), label:"15/Jun 16h00" },
 
   { id:"gg2r1", phase:"grupos", group:"Grupo G", rodada:1, status:"upcoming",
     a:{name:"Irã",          flag:ENG.IRN}, b:{name:"Nova Zelândia", flag:F.NZL},
-    kickoff:brt("2026-06-16",1,0), label:"16/Jun 01h00" },
+    kickoff:brt("2026-06-15",22,0), label:"15/Jun 22h00" },
 
   // Rodada 2
   { id:"gg1r2", phase:"grupos", group:"Grupo G", rodada:2, status:"upcoming",
@@ -339,17 +339,17 @@ export const MATCHES: Match[] = [
   // Rodada 3
   { id:"gg1r3", phase:"grupos", group:"Grupo G", rodada:3, status:"upcoming",
     a:{name:"Bélgica",      flag:F.BEL},  b:{name:"Nova Zelândia", flag:F.NZL},
-    kickoff:brt("2026-06-26",16,0), label:"26/Jun 16h00" },
+    kickoff:brt("2026-06-27",0,0), label:"27/Jun 00h00" },
 
   { id:"gg2r3", phase:"grupos", group:"Grupo G", rodada:3, status:"upcoming",
     a:{name:"Egito",        flag:F.EGY},  b:{name:"Irã",           flag:ENG.IRN},
-    kickoff:brt("2026-06-26",16,0), label:"26/Jun 16h00" },
+    kickoff:brt("2026-06-27",0,0), label:"27/Jun 00h00" },
 
   // ── GRUPO H: Espanha, Cabo Verde, Arábia Saudita, Uruguai ──
   // Rodada 1
   { id:"gh1r1", phase:"grupos", group:"Grupo H", rodada:1, status:"upcoming",
     a:{name:"Espanha",       flag:F.ESP},  b:{name:"Cabo Verde",     flag:F.CPV},
-    kickoff:brt("2026-06-15",14,0), label:"15/Jun 14h00" },
+    kickoff:brt("2026-06-15",13,0), label:"15/Jun 13h00" },
 
   { id:"gh2r1", phase:"grupos", group:"Grupo H", rodada:1, status:"upcoming",
     a:{name:"Arábia Saudita", flag:F.KSA}, b:{name:"Uruguai",        flag:F.URU},
@@ -358,20 +358,20 @@ export const MATCHES: Match[] = [
   // Rodada 2
   { id:"gh1r2", phase:"grupos", group:"Grupo H", rodada:2, status:"upcoming",
     a:{name:"Espanha",       flag:F.ESP},  b:{name:"Arábia Saudita", flag:F.KSA},
-    kickoff:brt("2026-06-22",13,0), label:"22/Jun 13h00" },
+    kickoff:brt("2026-06-21",13,0), label:"21/Jun 13h00" },
 
   { id:"gh2r2", phase:"grupos", group:"Grupo H", rodada:2, status:"upcoming",
     a:{name:"Uruguai",       flag:F.URU},  b:{name:"Cabo Verde",      flag:F.CPV},
-    kickoff:brt("2026-06-22",16,0), label:"22/Jun 16h00" },
+    kickoff:brt("2026-06-21",19,0), label:"21/Jun 19h00" },
 
   // Rodada 3
   { id:"gh1r3", phase:"grupos", group:"Grupo H", rodada:3, status:"upcoming",
     a:{name:"Espanha",       flag:F.ESP},  b:{name:"Uruguai",         flag:F.URU},
-    kickoff:brt("2026-06-26",22,0), label:"26/Jun 22h00" },
+    kickoff:brt("2026-06-26",21,0), label:"26/Jun 21h00" },
 
   { id:"gh2r3", phase:"grupos", group:"Grupo H", rodada:3, status:"upcoming",
     a:{name:"Cabo Verde",    flag:F.CPV},  b:{name:"Arábia Saudita",  flag:F.KSA},
-    kickoff:brt("2026-06-26",22,0), label:"26/Jun 22h00" },
+    kickoff:brt("2026-06-26",21,0), label:"26/Jun 21h00" },
 
   // ── GRUPO I: França, Senegal, Iraque, Noruega ──
   // Rodada 1
@@ -386,20 +386,20 @@ export const MATCHES: Match[] = [
   // Rodada 2
   { id:"gi1r2", phase:"grupos", group:"Grupo I", rodada:2, status:"upcoming",
     a:{name:"França",   flag:ENG.FRA}, b:{name:"Iraque",  flag:F.IRQ},
-    kickoff:brt("2026-06-21",22,0), label:"21/Jun 22h00" },
+    kickoff:brt("2026-06-22",18,0), label:"22/Jun 18h00" },
 
   { id:"gi2r2", phase:"grupos", group:"Grupo I", rodada:2, status:"upcoming",
     a:{name:"Noruega",  flag:F.NOR},   b:{name:"Senegal", flag:F.SEN},
-    kickoff:brt("2026-06-22",1,0), label:"22/Jun 01h00" },
+    kickoff:brt("2026-06-22",21,0), label:"22/Jun 21h00" },
 
   // Rodada 3
   { id:"gi1r3", phase:"grupos", group:"Grupo I", rodada:3, status:"upcoming",
     a:{name:"França",   flag:ENG.FRA}, b:{name:"Noruega", flag:F.NOR},
-    kickoff:brt("2026-06-27",16,0), label:"27/Jun 16h00" },
+    kickoff:brt("2026-06-26",16,0), label:"26/Jun 16h00" },
 
   { id:"gi2r3", phase:"grupos", group:"Grupo I", rodada:3, status:"upcoming",
     a:{name:"Senegal",  flag:F.SEN},   b:{name:"Iraque",  flag:F.IRQ},
-    kickoff:brt("2026-06-27",16,0), label:"27/Jun 16h00" },
+    kickoff:brt("2026-06-26",16,0), label:"26/Jun 16h00" },
 
   // ── GRUPO J: Argentina, Argélia, Áustria, Jordânia ──
   // Rodada 1
@@ -409,25 +409,25 @@ export const MATCHES: Match[] = [
 
   { id:"gj2r1", phase:"grupos", group:"Grupo J", rodada:1, status:"upcoming",
     a:{name:"Áustria",   flag:F.AUT},   b:{name:"Jordânia", flag:F.JOR},
-    kickoff:brt("2026-06-17",13,0), label:"17/Jun 13h00" },
+    kickoff:brt("2026-06-17",1,0), label:"17/Jun 01h00" },
 
   // Rodada 2
   { id:"gj1r2", phase:"grupos", group:"Grupo J", rodada:2, status:"upcoming",
     a:{name:"Argentina", flag:ENG.ARG}, b:{name:"Áustria",  flag:F.AUT},
-    kickoff:brt("2026-06-23",13,0), label:"23/Jun 13h00" },
+    kickoff:brt("2026-06-22",14,0), label:"22/Jun 14h00" },
 
   { id:"gj2r2", phase:"grupos", group:"Grupo J", rodada:2, status:"upcoming",
     a:{name:"Jordânia",  flag:F.JOR},   b:{name:"Argélia",  flag:F.ALG},
-    kickoff:brt("2026-06-23",16,0), label:"23/Jun 16h00" },
+    kickoff:brt("2026-06-23",0,0), label:"23/Jun 00h00" },
 
   // Rodada 3
   { id:"gj1r3", phase:"grupos", group:"Grupo J", rodada:3, status:"upcoming",
     a:{name:"Argentina", flag:ENG.ARG}, b:{name:"Jordânia", flag:F.JOR},
-    kickoff:brt("2026-06-27",22,0), label:"27/Jun 22h00" },
+    kickoff:brt("2026-06-27",23,0), label:"27/Jun 23h00" },
 
   { id:"gj2r3", phase:"grupos", group:"Grupo J", rodada:3, status:"upcoming",
     a:{name:"Argélia",   flag:F.ALG},   b:{name:"Áustria",  flag:F.AUT},
-    kickoff:brt("2026-06-27",22,0), label:"27/Jun 22h00" },
+    kickoff:brt("2026-06-27",23,0), label:"27/Jun 23h00" },
 
   // ── GRUPO K: Portugal, Rep. Congo, Uzbequistão, Colômbia ──
   // Rodada 1
@@ -442,20 +442,20 @@ export const MATCHES: Match[] = [
   // Rodada 2
   { id:"gk1r2", phase:"grupos", group:"Grupo K", rodada:2, status:"upcoming",
     a:{name:"Portugal",     flag:ENG.POR}, b:{name:"Uzbequistão", flag:F.UZB},
-    kickoff:brt("2026-06-23",19,0), label:"23/Jun 19h00" },
+    kickoff:brt("2026-06-23",14,0), label:"23/Jun 14h00" },
 
   { id:"gk2r2", phase:"grupos", group:"Grupo K", rodada:2, status:"upcoming",
     a:{name:"Colômbia",    flag:F.COL},   b:{name:"Rep. Congo",  flag:F.COD},
-    kickoff:brt("2026-06-24",13,0), label:"24/Jun 13h00" },
+    kickoff:brt("2026-06-23",23,0), label:"23/Jun 23h00" },
 
   // Rodada 3
   { id:"gk1r3", phase:"grupos", group:"Grupo K", rodada:3, status:"upcoming",
     a:{name:"Portugal",     flag:ENG.POR}, b:{name:"Colômbia",   flag:F.COL},
-    kickoff:brt("2026-06-28",19,0), label:"28/Jun 19h00" },
+    kickoff:brt("2026-06-27",20,30), label:"27/Jun 20h30" },
 
   { id:"gk2r3", phase:"grupos", group:"Grupo K", rodada:3, status:"upcoming",
     a:{name:"Rep. Congo",  flag:F.COD},   b:{name:"Uzbequistão", flag:F.UZB},
-    kickoff:brt("2026-06-28",19,0), label:"28/Jun 19h00" },
+    kickoff:brt("2026-06-27",20,30), label:"27/Jun 20h30" },
 
   // ── GRUPO L: Inglaterra, Croácia, Gana, Panamá ──
   // Rodada 1
@@ -470,20 +470,20 @@ export const MATCHES: Match[] = [
   // Rodada 2
   { id:"gl1r2", phase:"grupos", group:"Grupo L", rodada:2, status:"upcoming",
     a:{name:"Inglaterra",  flag:ENG.ING}, b:{name:"Gana",     flag:F.GHA},
-    kickoff:brt("2026-06-24",16,0), label:"24/Jun 16h00" },
+    kickoff:brt("2026-06-23",17,0), label:"23/Jun 17h00" },
 
   { id:"gl2r2", phase:"grupos", group:"Grupo L", rodada:2, status:"upcoming",
     a:{name:"Croácia",    flag:F.CRO},   b:{name:"Panamá",   flag:F.PAN},
-    kickoff:brt("2026-06-24",22,0), label:"24/Jun 22h00" },
+    kickoff:brt("2026-06-23",20,0), label:"23/Jun 20h00" },
 
   // Rodada 3
   { id:"gl1r3", phase:"grupos", group:"Grupo L", rodada:3, status:"upcoming",
     a:{name:"Inglaterra",  flag:ENG.ING}, b:{name:"Panamá",   flag:F.PAN},
-    kickoff:brt("2026-06-28",22,0), label:"28/Jun 22h00" },
+    kickoff:brt("2026-06-27",18,0), label:"27/Jun 18h00" },
 
   { id:"gl2r3", phase:"grupos", group:"Grupo L", rodada:3, status:"upcoming",
     a:{name:"Croácia",    flag:F.CRO},   b:{name:"Gana",     flag:F.GHA},
-    kickoff:brt("2026-06-28",22,0), label:"28/Jun 22h00" },
+    kickoff:brt("2026-06-27",18,0), label:"27/Jun 18h00" },
 ];
 
 // ── Regras de pontuação ──────────────────────────────────────────
