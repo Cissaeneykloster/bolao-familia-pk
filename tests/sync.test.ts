@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 // Mocka a camada de sync para observar as chamadas feitas pelo store
 vi.mock("@/lib/supabase-sync", () => ({
@@ -138,7 +138,7 @@ describe("mergeGroupPredictions — regras de merge", () => {
 
 // ── Trava de palpite no kickoff ───────────────────────────────────
 
-import { isMatchLocked } from "@/lib/standings";
+import { isMatchLocked, isMatchGuessLocked } from "@/lib/standings";
 import { MATCHES, EXTRA_MS_AFTER_KICKOFF } from "@/lib/mock-data";
 
 describe("isMatchLocked — palpite trava quando a partida começa", () => {
@@ -165,22 +165,51 @@ describe("isMatchLocked — palpite trava quando a partida começa", () => {
   });
 });
 
-describe("saveGuess — respeita a trava do kickoff", () => {
-  it("partida já iniciada: não grava nem local nem no Supabase", () => {
-    const past = MATCHES.find(
-      (m) => !m.training && m.kickoff && m.kickoff + EXTRA_MS_AFTER_KICKOFF < Date.now(),
-    );
-    expect(past, "esperava ao menos um jogo já iniciado no calendário").toBeDefined();
+describe("isMatchGuessLocked — período de graça (+10 dias)", () => {
+  const kickoff = new Date("2026-06-20T16:00:00-03:00").getTime(); // antes do prazo (21/Jun)
 
-    useBolao.setState({ currentUserApelido: "Nino", guesses: { [past!.id]: { a: 1, b: 0 } } });
-    useBolao.getState().saveGuess(past!.id);
+  it("dentro do prazo: liberado mesmo após o kickoff", () => {
+    expect(isMatchGuessLocked({ kickoff }, kickoff + EXTRA_MS_AFTER_KICKOFF)).toBe(false);
+  });
+
+  it("após o prazo, partida iniciada: travado", () => {
+    const lateKickoff = new Date("2026-06-25T19:00:00-03:00").getTime();
+    expect(isMatchGuessLocked({ kickoff: lateKickoff }, lateKickoff + EXTRA_MS_AFTER_KICKOFF)).toBe(true);
+  });
+
+  it("após o prazo, antes do kickoff: liberado", () => {
+    const lateKickoff = new Date("2026-06-25T19:00:00-03:00").getTime();
+    expect(isMatchGuessLocked({ kickoff: lateKickoff }, lateKickoff - 1000)).toBe(false);
+  });
+});
+
+describe("saveGuess — trava de palpite (período de graça + kickoff)", () => {
+  const DURING = new Date("2026-06-14T12:00:00Z"); // dentro do prazo (+10 dias)
+  const AFTER = new Date("2026-06-26T12:00:00Z");   // após o prazo (21/Jun)
+  const started = MATCHES.find((m) => !m.training && m.kickoff && m.kickoff < DURING.getTime());
+  const future = MATCHES.find((m) => !m.training && m.kickoff && m.kickoff > AFTER.getTime());
+
+  afterEach(() => vi.useRealTimers());
+
+  it("dentro do prazo: grava mesmo em jogo já iniciado", () => {
+    vi.useFakeTimers(); vi.setSystemTime(DURING);
+    expect(started, "esperava um jogo já iniciado no calendário").toBeDefined();
+    useBolao.setState({ currentUserApelido: "Nino", guesses: { [started!.id]: { a: 1, b: 0 } } });
+    useBolao.getState().saveGuess(started!.id);
+    expect(upsertGuess).toHaveBeenCalled();
+  });
+
+  it("após o prazo: não grava jogo já iniciado", () => {
+    vi.useFakeTimers(); vi.setSystemTime(AFTER);
+    expect(started).toBeDefined();
+    useBolao.setState({ currentUserApelido: "Nino", guesses: { [started!.id]: { a: 1, b: 0 } } });
+    useBolao.getState().saveGuess(started!.id);
     expect(upsertGuess).not.toHaveBeenCalled();
   });
 
-  it("partida futura: grava normalmente", () => {
-    const future = MATCHES.find((m) => !m.training && m.kickoff && m.kickoff > Date.now() + 60_000);
-    expect(future, "esperava ao menos um jogo futuro no calendário").toBeDefined();
-
+  it("após o prazo, jogo futuro: grava normalmente", () => {
+    vi.useFakeTimers(); vi.setSystemTime(AFTER);
+    expect(future, "esperava um jogo futuro no calendário").toBeDefined();
     useBolao.setState({ currentUserApelido: "Nino", guesses: { [future!.id]: { a: 2, b: 2 } } });
     useBolao.getState().saveGuess(future!.id);
     expect(upsertGuess).toHaveBeenCalledWith("Nino", future!.id, 2, 2);

@@ -9,7 +9,7 @@ import { DESAFIO_CATS as DEFAULT_CATS, MATCHES } from "./mock-data";
 import { upsertGuess, upsertGroupPredictions } from "./supabase-sync";
 import type { DailyDraw } from "./supabase-sync";
 import { breakdown } from "./scoring";
-import { isMatchLocked, arePredictionsLocked } from "./standings";
+import { isMatchGuessLocked, arePredictionsLocked } from "./standings";
 
 // ── Tipos do estado ───────────────────────────────────────────────
 
@@ -249,7 +249,7 @@ export const useBolao = create<BolaoState>()(
       saveGuess: (id) => {
         // Partida iniciada → palpite não pode mais ser salvo (regra do bolão)
         const match = get().matches.find((m) => m.id === id);
-        if (match && isMatchLocked(match)) return;
+        if (match && isMatchGuessLocked(match)) return;
 
         const { currentUserApelido, guesses } = get();
         const g = guesses[id];

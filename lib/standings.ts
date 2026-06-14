@@ -37,6 +37,20 @@ export function isMatchLocked(
   return now >= match.kickoff + EXTRA_MS_AFTER_KICKOFF;
 }
 
+/**
+ * Trava de PALPITE de jogo considerando o período de graça (+10 dias).
+ * Enquanto o prazo das previsões não encerra, NENHUM jogo trava — assim
+ * participantes que entram tarde conseguem palpitar. Após o prazo, vale a
+ * trava normal (kickoff + tolerância).
+ */
+export function isMatchGuessLocked(
+  match: Pick<Match, "kickoff" | "training">,
+  now = Date.now(),
+): boolean {
+  if (now < GROUP_PREDICTIONS_DEADLINE_MS) return false;
+  return isMatchLocked(match, now);
+}
+
 /** Pontos ganhos com as previsões de grupos (10 pts por classificado acertado) */
 export function calcGroupPredictionPts(
   predictions: Record<string, { first: string; second: string }>,
