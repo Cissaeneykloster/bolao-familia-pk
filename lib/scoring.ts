@@ -89,3 +89,51 @@ export function rankWithEff(
 
 /** Pontuação máxima possível em um jogo (grupos) */
 export const PONTUACAO_MAXIMA_GRUPOS = SCORING.reduce((s, r) => s + r.pts, 0); // 25
+
+// ── Penalidade por ausência sequencial de palpites ────────────────
+/** Jogos finalizados CONSECUTIVOS sem palpite tolerados antes de penalizar */
+export const FREE_MISSES = 2;
+/** Pontos perdidos por jogo sem palpite além da carência */
+export const MISS_PENALTY = 3;
+
+/**
+ * Recalcula os pontos de partidas de cada participante a partir dos
+ * resultados oficiais + palpites reais.
+ *
+ * Regra de ausência (sequencial): contam-se os jogos finalizados CONSECUTIVOS
+ * sem palpite. Os 2 primeiros são carência (0 pts); do 3º consecutivo em diante
+ * perde MISS_PENALTY por jogo. Ao palpitar, a sequência zera e a carência
+ * recomeça. Treinos não contam. Processa em ordem cronológica (kickoff).
+ */
+export function computeMatchPts(
+  ativos: { apelido: string }[],
+  officialResults: Record<string, { sa: number; sb: number }>,
+  allGuesses: Record<string, Record<string, { a: number; b: number }>>,
+  matches: Match[],
+): Record<string, number> {
+  const byId = new Map(matches.map((m) => [m.id, m]));
+  const jogos = Object.keys(officialResults)
+    .map((id) => byId.get(id))
+    .filter((m): m is Match => !!m && !m.training)
+    .sort((a, b) => (a.kickoff ?? 0) - (b.kickoff ?? 0));
+
+  const pts: Record<string, number> = {};
+  const streak: Record<string, number> = {};
+  for (const p of ativos) { pts[p.apelido] = 0; streak[p.apelido] = 0; }
+
+  for (const m of jogos) {
+    const score = officialResults[m.id];
+    const mg = allGuesses[m.id] ?? {};
+    for (const p of ativos) {
+      const g = mg[p.apelido];
+      if (g) {
+        pts[p.apelido] += breakdown(score, { a: g.a, b: g.b }, m.phase).total;
+        streak[p.apelido] = 0; // palpitou → zera a carência
+      } else {
+        streak[p.apelido] += 1;
+        if (streak[p.apelido] > FREE_MISSES) pts[p.apelido] -= MISS_PENALTY;
+      }
+    }
+  }
+  return pts;
+}

@@ -109,19 +109,13 @@ export function PalpitesScreen() {
         </button>
 
         <button
-          onClick={() => {
-            if (!predLocked && previsoes < 12) {
-              show("⚠️ Salve as previsões dos grupos primeiro!");
-              return;
-            }
-            setTab("jogos");
-          }}
+          onClick={() => setTab("jogos")}
           style={{
             flex: 1, padding: "10px 0", borderRadius: 10, fontWeight: 700, fontSize: 13,
             border: `1px solid ${tab === "jogos" ? "var(--neon)" : "var(--border)"}`,
             background: tab === "jogos" ? "var(--neon-soft)" : "transparent",
-            color: tab === "jogos" ? "var(--neon)" : (!predLocked && previsoes < 12) ? "var(--muted)" : "var(--muted)",
-            cursor: "pointer", opacity: (!predLocked && previsoes < 12) ? 0.5 : 1,
+            color: tab === "jogos" ? "var(--neon)" : "var(--muted)",
+            cursor: "pointer",
           }}
         >
           ⚽ Palpites dos Jogos
@@ -129,37 +123,11 @@ export function PalpitesScreen() {
         </button>
       </div>
 
-      {/* ── Aviso de trava ── */}
-      {tab === "jogos" && !predLocked && previsoes < 12 && (
-        <div style={{
-          padding: "14px 16px", borderRadius: "var(--radius)",
-          background: "rgba(255,90,90,0.08)", border: "1px solid rgba(255,90,90,0.3)",
-          textAlign: "center",
-        }}>
-          <p style={{ fontSize: 14, color: "var(--danger)", fontWeight: 700, margin: "0 0 6px" }}>
-            🔒 Palpites bloqueados
-          </p>
-          <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-            Preencha e salve a previsão dos {12 - previsoes} grupos restantes primeiro.
-          </p>
-          <button
-            onClick={() => setTab("grupos")}
-            style={{
-              marginTop: 10, padding: "8px 20px", borderRadius: 8,
-              border: "none", background: "var(--warn)", color: "#000",
-              cursor: "pointer", fontWeight: 700, fontSize: 13,
-            }}
-          >
-            Ir para Previsão dos Grupos
-          </button>
-        </div>
-      )}
-
       {/* ── Aba: Previsão dos grupos ── */}
       {tab === "grupos" && <PrevisaoGrupos />}
 
-      {/* ── Aba: Palpites dos jogos ── */}
-      {tab === "jogos" && (predLocked || previsoes >= 12) && (
+      {/* ── Aba: Palpites dos jogos (sempre liberada) ── */}
+      {tab === "jogos" && (
         <>
           {/* Anel de progresso */}
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
