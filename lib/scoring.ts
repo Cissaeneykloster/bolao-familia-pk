@@ -95,6 +95,12 @@ export const PONTUACAO_MAXIMA_GRUPOS = SCORING.reduce((s, r) => s + r.pts, 0); /
 export const FREE_MISSES = 2;
 /** Pontos perdidos por jogo sem palpite além da carência */
 export const MISS_PENALTY = 3;
+/**
+ * Marco a partir do qual a penalidade de ausência passa a valer (00h BRT de
+ * 14/Jun, quando a regra foi criada). Jogos com kickoff ANTERIOR a este
+ * instante não penalizam ausência — só contam os pontos positivos.
+ */
+export const PENALTY_START_MS = new Date("2026-06-14T03:00:00Z").getTime(); // 14/Jun 00h BRT
 
 /**
  * Recalcula os pontos de partidas de cada participante a partir dos
@@ -104,12 +110,16 @@ export const MISS_PENALTY = 3;
  * sem palpite. Os 2 primeiros são carência (0 pts); do 3º consecutivo em diante
  * perde MISS_PENALTY por jogo. Ao palpitar, a sequência zera e a carência
  * recomeça. Treinos não contam. Processa em ordem cronológica (kickoff).
+ *
+ * `penaltyFrom`: só penaliza ausência em jogos com kickoff >= esse instante
+ * (jogos anteriores só somam pontos positivos). 0 = penaliza tudo.
  */
 export function computeMatchPts(
   ativos: { apelido: string }[],
   officialResults: Record<string, { sa: number; sb: number }>,
   allGuesses: Record<string, Record<string, { a: number; b: number }>>,
   matches: Match[],
+  penaltyFrom = 0,
 ): Record<string, number> {
   const byId = new Map(matches.map((m) => [m.id, m]));
   const jogos = Object.keys(officialResults)
@@ -124,12 +134,13 @@ export function computeMatchPts(
   for (const m of jogos) {
     const score = officialResults[m.id];
     const mg = allGuesses[m.id] ?? {};
+    const penaliza = (m.kickoff ?? 0) >= penaltyFrom; // jogos antes do marco não punem ausência
     for (const p of ativos) {
       const g = mg[p.apelido];
       if (g) {
         pts[p.apelido] += breakdown(score, { a: g.a, b: g.b }, m.phase).total;
-        streak[p.apelido] = 0; // palpitou → zera a carência
-      } else {
+        if (penaliza) streak[p.apelido] = 0; // palpitou → zera a carência
+      } else if (penaliza) {
         streak[p.apelido] += 1;
         if (streak[p.apelido] > FREE_MISSES) pts[p.apelido] -= MISS_PENALTY;
       }
