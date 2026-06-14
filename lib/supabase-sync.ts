@@ -157,6 +157,64 @@ export async function upsertAdminDelta(apelido: string, delta: number, grupoId =
   if (error) console.error("[SB] upsertAdminDelta:", error.message);
 }
 
+// ── Desafio diário (sorteio do sistema + pontos) ──────────────────
+
+export interface DailyDraw {
+  area: string;
+  itemIdx: number;
+  descricao: string;
+  pts: number;
+  dateBrt: string;
+}
+
+/** Carrega o sorteio do dia de um grupo (ou null se ainda não houve) */
+export async function loadDailyDraw(grupoId: string, dateBrt: string): Promise<DailyDraw | null> {
+  const { data, error } = await supabase
+    .from("daily_draws").select("*")
+    .eq("grupo_id", grupoId).eq("date_brt", dateBrt).maybeSingle();
+  if (error) { console.error("[SB] loadDailyDraw:", error.message); return null; }
+  if (!data) return null;
+  return { area: data.area, itemIdx: data.item_idx, descricao: data.descricao, pts: data.pts, dateBrt: data.date_brt };
+}
+
+/** Insere o sorteio do dia — idempotente: o 1º a gravar vence (não sobrescreve) */
+export async function insertDailyDraw(d: {
+  grupoId: string; dateBrt: string; area: string; itemIdx: number; descricao: string; pts: number;
+}) {
+  const { error } = await supabase.from("daily_draws").upsert({
+    grupo_id: d.grupoId, date_brt: d.dateBrt, area: d.area,
+    item_idx: d.itemIdx, descricao: d.descricao, pts: d.pts,
+  }, { onConflict: "grupo_id,date_brt", ignoreDuplicates: true });
+  if (error) console.error("[SB] insertDailyDraw:", error.message);
+}
+
+/** Soma dos pontos de desafios por participante → { apelido: total } */
+export async function loadChallengePts(): Promise<Record<string, number>> {
+  const { data, error } = await supabase.from("challenge_done").select("apelido,pts");
+  if (error) { console.error("[SB] loadChallengePts:", error.message); return {}; }
+  const totals: Record<string, number> = {};
+  for (const r of data ?? []) totals[r.apelido] = (totals[r.apelido] ?? 0) + r.pts;
+  return totals;
+}
+
+/** Estado (done) do participante atual para a data informada (null = não marcou) */
+export async function loadMyChallengeDone(apelido: string, dateBrt: string): Promise<boolean | null> {
+  const { data, error } = await supabase.from("challenge_done").select("done")
+    .eq("apelido", apelido).eq("date_brt", dateBrt).maybeSingle();
+  if (error) { console.error("[SB] loadMyChallengeDone:", error.message); return null; }
+  return data ? data.done : null;
+}
+
+/** Marca o desafio do dia do participante (done → +pts, não feito → −pts) */
+export async function upsertChallengeDone(
+  apelido: string, grupoId: string, dateBrt: string, done: boolean, pts: number,
+) {
+  const { error } = await supabase.from("challenge_done").upsert({
+    apelido, grupo_id: grupoId, date_brt: dateBrt, done, pts, updated_at: nowBrasilia(),
+  }, { onConflict: "apelido,date_brt" });
+  if (error) console.error("[SB] upsertChallengeDone:", error.message);
+}
+
 // ── Palpites ──────────────────────────────────────────────────────
 
 /** Carrega palpites do participante atual */

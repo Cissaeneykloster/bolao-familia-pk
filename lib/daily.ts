@@ -44,6 +44,24 @@ export function msUntilClose(dateVancouver: string, now = Date.now()): number {
   return Math.max(0, close - now);
 }
 
+// ── Horário de Brasília (sorteio diário às 07:00 BRT) ─────────────
+const BRT_UTC_OFFSET = -3;
+
+/** Data atual no calendário de Brasília (YYYY-MM-DD) */
+export function todayBrasilia(now = new Date()): string {
+  return new Date(now.getTime() + BRT_UTC_OFFSET * 3_600_000).toISOString().slice(0, 10);
+}
+
+/** Hora atual (0-23) em Brasília */
+export function brasiliaHour(now = new Date()): number {
+  return new Date(now.getTime() + BRT_UTC_OFFSET * 3_600_000).getUTCHours();
+}
+
+/** O sorteio do dia já está liberado? (a partir das 07:00 BRT) */
+export function isDrawTime(now = new Date()): boolean {
+  return brasiliaHour(now) >= 7;
+}
+
 // ── Numeração das categorias ──────────────────────────────────────
 export const AREA_NUMBER: Record<Area, number> = {
   quarto:      1,

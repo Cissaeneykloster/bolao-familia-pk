@@ -7,8 +7,11 @@ import {
   loadParticipantes, loadOfficialResults, loadMatchPts, loadGuesses,
   loadGroupPredictions, backfillGuesses, upsertGroupPredictions,
   loadMatches, syncAllMatches, loadAdminDeltas,
+  loadDailyDraw, insertDailyDraw, loadChallengePts, loadMyChallengeDone,
 } from "@/lib/supabase-sync";
 import { MATCHES } from "@/lib/mock-data";
+import { rollDailyChallenge, todayBrasilia, isDrawTime } from "@/lib/daily";
+import { getDesafioCatsForGroup } from "@/lib/useDesafios";
 
 /**
  * Hook que sincroniza os dados críticos do Supabase ao montar o app.
@@ -21,6 +24,9 @@ export function useSupabaseSync() {
     setOfficialResults,
     setMatchPts,
     setAdminDeltas,
+    setDailyDraw,
+    setMyChallengeDone,
+    setChallengePts,
     mergeGuesses,
     mergeGroupPredictions,
     currentUserApelido,
@@ -31,6 +37,32 @@ export function useSupabaseSync() {
   useEffect(() => {
     if (synced.current) return;
     synced.current = true;
+
+    // Desafio diário (sorteio do sistema, lazy): 1º acesso após 07:00 BRT
+    // sorteia e grava no banco (idempotente); os demais recebem via Realtime.
+    async function syncDaily() {
+      const date = todayBrasilia();
+      const grupo = useBolao.getState().currentGrupoId;
+      if (grupo) {
+        let draw = await loadDailyDraw(grupo, date);
+        if (!draw && isDrawTime()) {
+          const cats = getDesafioCatsForGroup(useBolao.getState().desafioCatsByGroup, grupo);
+          const rolled = rollDailyChallenge(cats);
+          const cat = cats.find((c) => c.id === rolled.area);
+          if (cat) {
+            await insertDailyDraw({
+              grupoId: grupo, dateBrt: date, area: rolled.area, itemIdx: rolled.itemIdx,
+              descricao: cat.items[rolled.itemIdx] ?? "", pts: cat.pts,
+            });
+            draw = await loadDailyDraw(grupo, date);
+          }
+        }
+        setDailyDraw(draw);
+      }
+      setChallengePts(await loadChallengePts());
+      const apelido = useBolao.getState().currentUserApelido;
+      if (apelido) setMyChallengeDone(await loadMyChallengeDone(apelido, date));
+    }
 
     async function syncAll() {
       // Carrega jogos do banco; se a tabela estiver vazia, semeia a partir
@@ -86,6 +118,7 @@ export function useSupabaseSync() {
     }
 
     syncAll();
+    void syncDaily();
 
     // Re-sync a cada 30s como fallback (caso Realtime não disparar)
     const pollId = setInterval(async () => {
@@ -129,11 +162,24 @@ export function useSupabaseSync() {
         setAdminDeltas(await loadAdminDeltas());
       })
 
+      // Desafio diário sorteado/propagado
+      .on("postgres_changes", { event: "*", schema: "public", table: "daily_draws" }, async () => {
+        const grupo = useBolao.getState().currentGrupoId;
+        if (grupo) setDailyDraw(await loadDailyDraw(grupo, todayBrasilia()));
+      })
+
+      // Conclusão de desafios (pontos do ranking)
+      .on("postgres_changes", { event: "*", schema: "public", table: "challenge_done" }, async () => {
+        setChallengePts(await loadChallengePts());
+        const apelido = useBolao.getState().currentUserApelido;
+        if (apelido) setMyChallengeDone(await loadMyChallengeDone(apelido, todayBrasilia()));
+      })
+
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
       clearInterval(pollId);
     };
-  }, [setParticipantes, setMatches, setOfficialResults, setMatchPts, setAdminDeltas, mergeGuesses, mergeGroupPredictions, currentUserApelido]);
+  }, [setParticipantes, setMatches, setOfficialResults, setMatchPts, setAdminDeltas, setDailyDraw, setMyChallengeDone, setChallengePts, mergeGuesses, mergeGroupPredictions, currentUserApelido]);
 }

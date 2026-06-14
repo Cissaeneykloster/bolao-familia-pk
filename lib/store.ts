@@ -7,6 +7,7 @@ import type { Participante } from "./mock-data";
 import type { DesafioCat } from "./types";
 import { DESAFIO_CATS as DEFAULT_CATS, MATCHES } from "./mock-data";
 import { upsertGuess, upsertGroupPredictions } from "./supabase-sync";
+import type { DailyDraw } from "./supabase-sync";
 import { breakdown } from "./scoring";
 import { isMatchLocked } from "./standings";
 
@@ -73,6 +74,11 @@ interface BolaoState {
   // Jogos (fonte de verdade = Supabase; inicia com o seed MATCHES p/ SSR/offline)
   matches: Match[];
 
+  // Desafio diário (sorteado pelo sistema, propagado por grupo)
+  dailyDraw: DailyDraw | null;
+  myChallengeDone: boolean | null;        // estado do usuário atual hoje (null = não marcou)
+  challengePts: Record<string, number>;   // apelido → total de pontos de desafios
+
   // Dados compartilhados
   adminDelta: Record<string, number>;
   betFix: Record<string, { a: number; b: number }>;
@@ -98,6 +104,9 @@ interface BolaoState {
   // Sincronização Supabase → store
   setParticipantes: (p: Participante[]) => void;
   setMatches: (m: Match[]) => void;
+  setDailyDraw: (d: DailyDraw | null) => void;
+  setMyChallengeDone: (v: boolean | null) => void;
+  setChallengePts: (m: Record<string, number>) => void;
   setOfficialResults: (r: Record<string, { sa: number; sb: number }>) => void;
   setMatchPts: (pts: Record<string, number>) => void;
   mergeGuesses: (g: Record<string, { a: number; b: number }>) => void;
@@ -185,6 +194,9 @@ const initialState = {
 
   desafioCatsByGroup: {},
   matches: MATCHES,
+  dailyDraw: null as DailyDraw | null,
+  myChallengeDone: null as boolean | null,
+  challengePts: {},
   matchPts: {},
   officialResults: {},
   feedEvents: [],
@@ -325,6 +337,9 @@ export const useBolao = create<BolaoState>()(
       // Supabase sync setters
       setParticipantes: (p) => set({ participantes: p }),
       setMatches: (m) => set({ matches: m }),
+      setDailyDraw: (d) => set({ dailyDraw: d }),
+      setMyChallengeDone: (v) => set({ myChallengeDone: v }),
+      setChallengePts: (m) => set({ challengePts: m }),
       setOfficialResults: (r) => set({ officialResults: r }),
       setMatchPts: (pts) => set({ matchPts: pts }),
       mergeGuesses: (g) =>
@@ -539,9 +554,9 @@ export const useBolao = create<BolaoState>()(
       name: "bolao2026:v1",
       // adminUnlocked e adminGrupoId NÃO são persistidos (sessão)
       partialize: (state) => {
-        // matches não é persistido — vem sempre do seed/Supabase (evita dados velhos)
+        // dados de servidor (matches/desafio diário) não são persistidos — vêm sempre fresh
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { adminUnlocked, adminGrupoId, matches, ...rest } = state;
+        const { adminUnlocked, adminGrupoId, matches, dailyDraw, myChallengeDone, challengePts, ...rest } = state;
         return rest;
       },
     }
