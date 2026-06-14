@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useBolao } from "@/lib/store";
 import { SCORING } from "@/lib/mock-data";
-import { isMatchGuessLocked } from "@/lib/standings";
+import { isMatchLocked } from "@/lib/standings";
 import type { Match } from "@/lib/types";
 
 interface PlacarInputProps {
@@ -140,8 +140,8 @@ export function PlacarInput({ match, onSaved }: PlacarInputProps) {
 
   // Resultado oficial lançado pelo admin → jogo congelado para todos
   const officialResult = match.training ? undefined : officialResults[match.id];
-  // Palpite travado só após o período de graça (+10 dias); antes, liberado
-  const started = isMatchGuessLocked(match);
+  // Partida já iniciada → palpite travado (regra do bolão)
+  const started = isMatchLocked(match);
   const frozen = !!officialResult || started;
 
   // Reset saved state quando o palpite mudar
