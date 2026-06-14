@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Draw, ChallengeRecord, FeedEvent } from "./types";
+import type { Draw, ChallengeRecord, FeedEvent, Match } from "./types";
 import type { Participante } from "./mock-data";
 import type { DesafioCat } from "./types";
 import { DESAFIO_CATS as DEFAULT_CATS, MATCHES } from "./mock-data";
@@ -70,6 +70,9 @@ interface BolaoState {
   // Resultados oficiais lançados pelo admin — congela o jogo para todos
   officialResults: Record<string, { sa: number; sb: number }>;
 
+  // Jogos (fonte de verdade = Supabase; inicia com o seed MATCHES p/ SSR/offline)
+  matches: Match[];
+
   // Dados compartilhados
   adminDelta: Record<string, number>;
   betFix: Record<string, { a: number; b: number }>;
@@ -94,6 +97,7 @@ interface BolaoState {
 
   // Sincronização Supabase → store
   setParticipantes: (p: Participante[]) => void;
+  setMatches: (m: Match[]) => void;
   setOfficialResults: (r: Record<string, { sa: number; sb: number }>) => void;
   setMatchPts: (pts: Record<string, number>) => void;
   mergeGuesses: (g: Record<string, { a: number; b: number }>) => void;
@@ -179,6 +183,7 @@ const initialState = {
   currentUserApelido: null as string | null,
 
   desafioCatsByGroup: {},
+  matches: MATCHES,
   matchPts: {},
   officialResults: {},
   feedEvents: [],
@@ -230,7 +235,7 @@ export const useBolao = create<BolaoState>()(
 
       saveGuess: (id) => {
         // Partida iniciada → palpite não pode mais ser salvo (regra do bolão)
-        const match = MATCHES.find((m) => m.id === id);
+        const match = get().matches.find((m) => m.id === id);
         if (match && isMatchLocked(match)) return;
 
         const { currentUserApelido, guesses } = get();
@@ -318,6 +323,7 @@ export const useBolao = create<BolaoState>()(
 
       // Supabase sync setters
       setParticipantes: (p) => set({ participantes: p }),
+      setMatches: (m) => set({ matches: m }),
       setOfficialResults: (r) => set({ officialResults: r }),
       setMatchPts: (pts) => set({ matchPts: pts }),
       mergeGuesses: (g) =>
@@ -432,7 +438,7 @@ export const useBolao = create<BolaoState>()(
           for (const part of ativos) newPts[part.apelido] = 0;
 
           for (const [matchId, score] of Object.entries(state.officialResults)) {
-            const m = MATCHES.find((x) => x.id === matchId);
+            const m = state.matches.find((x) => x.id === matchId);
             if (!m || m.training) continue; // treino não pontua
             const matchGuesses = allGuesses[matchId] ?? {};
             for (const part of ativos) {
@@ -529,8 +535,9 @@ export const useBolao = create<BolaoState>()(
       name: "bolao2026:v1",
       // adminUnlocked e adminGrupoId NÃO são persistidos (sessão)
       partialize: (state) => {
+        // matches não é persistido — vem sempre do seed/Supabase (evita dados velhos)
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { adminUnlocked, adminGrupoId, ...rest } = state;
+        const { adminUnlocked, adminGrupoId, matches, ...rest } = state;
         return rest;
       },
     }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useBolao } from "@/lib/store";
-import { GROUPS, MATCHES } from "@/lib/mock-data";
+import { GROUPS } from "@/lib/mock-data";
 import { arePredictionsLocked, calcGroupPredictionPts } from "@/lib/standings";
 import { useToast } from "@/components/shell/Toast";
 import { useConfetti } from "@/components/shell/ConfettiCanvas";
@@ -55,7 +55,7 @@ export function PrevisaoGrupos() {
   const {
     groupPredictions, setGroupPrediction,
     groupPredictionsSaved, saveGroupPredictions,
-    resultFix,
+    resultFix, matches,
   } = useBolao();
   const { show } = useToast();
   const { fire } = useConfetti();
@@ -70,7 +70,7 @@ export function PrevisaoGrupos() {
 
   // Calcula pontos acumulados com os resultados já disponíveis
   const { total: ptsTotais, details } = calcGroupPredictionPts(
-    groupPredictions, GROUPS, MATCHES, resultFix
+    groupPredictions, GROUPS, matches, resultFix
   );
 
   const handleSave = () => {

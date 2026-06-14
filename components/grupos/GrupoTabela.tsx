@@ -3,7 +3,6 @@
 import { useState } from "react";
 import type { Group, GroupTeam } from "@/lib/types";
 import { useBolao } from "@/lib/store";
-import { MATCHES } from "@/lib/mock-data";
 import { calcGroupStandings } from "@/lib/standings";
 
 // ── Sub-componente: sua previsão de classificação ──────────────────
@@ -53,14 +52,14 @@ interface GrupoTabelaProps {
 
 export function GrupoTabela({ group }: GrupoTabelaProps) {
   const [open, setOpen] = useState(false);
-  const { resultFix } = useBolao();
+  const { resultFix, matches } = useBolao();
 
   // Classificação calculada dinamicamente a partir dos resultados reais
-  const standings = calcGroupStandings(group, MATCHES, resultFix);
-  const jogosEncerrados = MATCHES.filter(
+  const standings = calcGroupStandings(group, matches, resultFix);
+  const jogosEncerrados = matches.filter(
     (m) => m.group === group.name && m.phase === "grupos" && m.status === "finished"
   ).length;
-  const totalJogos = MATCHES.filter(
+  const totalJogos = matches.filter(
     (m) => m.group === group.name && m.phase === "grupos"
   ).length;
 

@@ -6,7 +6,9 @@ import { supabase } from "@/lib/supabase";
 import {
   loadParticipantes, loadOfficialResults, loadMatchPts, loadGuesses,
   loadGroupPredictions, backfillGuesses, upsertGroupPredictions,
+  loadMatches, syncAllMatches,
 } from "@/lib/supabase-sync";
+import { MATCHES } from "@/lib/mock-data";
 
 /**
  * Hook que sincroniza os dados críticos do Supabase ao montar o app.
@@ -15,6 +17,7 @@ import {
 export function useSupabaseSync() {
   const {
     setParticipantes,
+    setMatches,
     setOfficialResults,
     setMatchPts,
     mergeGuesses,
@@ -29,6 +32,16 @@ export function useSupabaseSync() {
     synced.current = true;
 
     async function syncAll() {
+      // Carrega jogos do banco; se a tabela estiver vazia, semeia a partir
+      // do seed local (MATCHES, já com os horários corrigidos)
+      const dbMatches = await loadMatches();
+      if (dbMatches.length > 0) {
+        setMatches(dbMatches);
+      } else {
+        const seeded = await syncAllMatches(MATCHES);
+        if (seeded > 0) console.log(`[SB] matches seed: ${seeded} jogo(s)`);
+      }
+
       // Carrega participantes
       const parts = await loadParticipantes();
       if (parts.length > 0) setParticipantes(parts);
@@ -101,11 +114,17 @@ export function useSupabaseSync() {
         setMatchPts(pts);
       })
 
+      // Jogos alterados (admin editou data/hora/placar)
+      .on("postgres_changes", { event: "*", schema: "public", table: "matches" }, async () => {
+        const m = await loadMatches();
+        if (m.length > 0) setMatches(m);
+      })
+
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
       clearInterval(pollId);
     };
-  }, [setParticipantes, setOfficialResults, setMatchPts, mergeGuesses, mergeGroupPredictions, currentUserApelido]);
+  }, [setParticipantes, setMatches, setOfficialResults, setMatchPts, mergeGuesses, mergeGroupPredictions, currentUserApelido]);
 }

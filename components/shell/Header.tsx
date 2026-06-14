@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useBolao } from "@/lib/store";
 import { bonusPts } from "@/lib/scoring";
-import { MATCHES, ADMINS } from "@/lib/mock-data";
+import { ADMINS } from "@/lib/mock-data";
 import { useDesafioCats } from "@/lib/useDesafios";
 
 export function Header() {
-  const { desafios, comboBank, penalty, currentGrupoId, currentUserApelido, participantes } = useBolao();
+  const { desafios, comboBank, penalty, currentGrupoId, currentUserApelido, participantes, matches } = useBolao();
   const DESAFIO_CATS = useDesafioCats();
   const bonus = bonusPts(desafios, DESAFIO_CATS, comboBank, penalty);
   const totalPts = bonus;
@@ -24,7 +24,7 @@ export function Header() {
     }
   }, [totalPts]);
 
-  const hasLive = MATCHES.some((m) => m.status === "live");
+  const hasLive = matches.some((m) => m.status === "live");
   const grupoCfg = ADMINS.find((a) => a.id === currentGrupoId);
   const qtd = participantes.filter((p) => p.grupoId === currentGrupoId && p.ativo).length;
 

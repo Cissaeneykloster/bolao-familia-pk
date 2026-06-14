@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useBolao } from "@/lib/store";
 import { rankWithEff, effPts, mScore, breakdown, bonusPts } from "@/lib/scoring";
-import { MATCHES, ADMINS } from "@/lib/mock-data";
+import { ADMINS } from "@/lib/mock-data";
 import { participantesToPlayers } from "@/lib/players";
 import { useDesafioCats } from "@/lib/useDesafios";
 import {
@@ -273,13 +273,13 @@ function TabPontos() {
 
 // ── Aba Palpites ─────────────────────────────────────────────────
 function TabPalpites() {
-  const { participantes, adminGrupoId, guesses, officialResults } = useBolao();
+  const { participantes, adminGrupoId, guesses, officialResults, matches } = useBolao();
   const meusPart = participantes.filter(
     (p) => (p.grupoId === adminGrupoId || !p.grupoId) && p.ativo
   );
 
   // Jogos com resultado oficial já lançado
-  const jogosComResultado = MATCHES.filter(
+  const jogosComResultado = matches.filter(
     (m) => !m.training && officialResults[m.id]
   ).sort((a, b) => (a.kickoff ?? 0) - (b.kickoff ?? 0));
 
@@ -344,17 +344,17 @@ function TabPalpites() {
 
 // ── Aba Resultados ───────────────────────────────────────────────
 function TabResultados() {
-  const { resultFix, setResultFix, saveResultAndCalcPts, addFeedEvent, participantes, adminGrupoId, officialResults } = useBolao();
+  const { resultFix, setResultFix, saveResultAndCalcPts, addFeedEvent, participantes, adminGrupoId, officialResults, matches } = useBolao();
   const [drafts, setDrafts] = useState<Record<string, { sa: number; sb: number }>>({});
   const [saved, setSaved] = useState<string | null>(null);
   const [syncingResults, setSyncingResults] = useState(false);
   const [syncResultMsg, setSyncResultMsg] = useState("");
   // TODOS os jogos ordenados por data (incluindo treinos)
-  const allMatches = [...MATCHES]
+  const allMatches = [...matches]
     .sort((a, b) => (a.kickoff ?? 0) - (b.kickoff ?? 0));
 
   const setDraft = (id: string, side: "sa" | "sb", dir: 1 | -1) => {
-    const m = MATCHES.find((x) => x.id === id)!;
+    const m = matches.find((x) => x.id === id)!;
     const prev = drafts[id] ?? { sa: m.sa ?? 0, sb: m.sb ?? 0 };
     const next = Math.min(20, Math.max(0, prev[side] + dir));
     setDrafts((d) => ({ ...d, [id]: { ...prev, [side]: next } }));
