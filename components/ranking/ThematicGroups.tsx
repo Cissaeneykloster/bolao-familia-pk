@@ -8,14 +8,14 @@ import { TIERS, tierForRank } from "@/lib/tiers";
 import type { Player } from "@/lib/types";
 
 export function ThematicGroups() {
-  const { adminDelta, desafios, comboBank, penalty, participantes, currentGrupoId, matchPts } = useBolao();
+  const { adminDelta, desafios, comboBank, penalty, participantes, currentGrupoId, matchPts, challengePts } = useBolao();
   const DESAFIO_CATS = useDesafioCats();
   const bonus = bonusPts(desafios, DESAFIO_CATS, comboBank, penalty);
 
   const doGrupo = currentGrupoId
     ? participantes.filter((p) => p.grupoId === currentGrupoId && p.ativo)
     : participantes.filter((p) => p.ativo);
-  const players = participantesToPlayers(doGrupo, matchPts);
+  const players = participantesToPlayers(doGrupo, matchPts, challengePts);
   const ranked = rankWithEff(players, adminDelta, bonus);
 
   if (ranked.length === 0) return null;
