@@ -144,7 +144,7 @@ export function Podium() {
   const doGrupo = currentGrupoId
     ? participantes.filter((p) => p.grupoId === currentGrupoId && p.ativo)
     : participantes.filter((p) => p.ativo);
-  const players = participantesToPlayers(doGrupo, adminDelta, matchPts);
+  const players = participantesToPlayers(doGrupo, matchPts);
   const ranked = rankWithEff(players, adminDelta, bonus);
   const top3 = ranked.slice(0, 3);
 

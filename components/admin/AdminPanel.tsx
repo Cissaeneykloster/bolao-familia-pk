@@ -123,11 +123,15 @@ function TabPontos() {
   const { adminDelta, setAdminDelta, resetAdminDelta, desafios, comboBank, penalty, participantes, adminGrupoId, resetMatchPts, matchPts, recalcAllMatchPts } = useBolao();
   const [recalcing, setRecalcing] = useState(false);
   const [recalcMsg, setRecalcMsg] = useState("");
+  const [sortAZ, setSortAZ] = useState(false);
   const DESAFIO_CATS = useDesafioCats();
   const bonus = bonusPts(desafios, DESAFIO_CATS, comboBank, penalty);
   const meusPart = participantes.filter((p) => p.grupoId === adminGrupoId && p.ativo);
-  const players = participantesToPlayers(meusPart, adminDelta);
-  const ranked = rankWithEff(players, adminDelta, bonus);
+  const players = participantesToPlayers(meusPart, matchPts);
+  // A–Z mantém a linha estável ao clicar +/-; "Pontos" ordena pelo ranking
+  const ranked = sortAZ
+    ? [...players].sort((a, b) => a.name.localeCompare(b.name, "pt"))
+    : rankWithEff(players, adminDelta, bonus);
 
   const totalMatchPts = Object.values(matchPts).reduce((s, v) => s + Math.abs(v), 0);
 
@@ -199,6 +203,29 @@ function TabPontos() {
           </button>
         </div>
       )}
+
+      {/* Ordenação */}
+      <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "2px 2px 4px" }}>
+        <span style={{ fontSize: 11, color: "var(--muted)", marginRight: 2 }}>Ordenar:</span>
+        {([
+          { az: false, label: "🏆 Pontos" },
+          { az: true,  label: "🔤 A–Z" },
+        ] as const).map((opt) => (
+          <button
+            key={opt.label}
+            onClick={() => setSortAZ(opt.az)}
+            style={{
+              padding: "4px 10px", borderRadius: 7, fontSize: 11, fontWeight: 700,
+              border: `1px solid ${sortAZ === opt.az ? "var(--neon)" : "var(--border)"}`,
+              background: sortAZ === opt.az ? "var(--neon-soft)" : "transparent",
+              color: sortAZ === opt.az ? "var(--neon)" : "var(--muted)",
+              cursor: "pointer",
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
 
       {ranked.map((p) => {
         const pts = effPts(p, adminDelta, bonus);
