@@ -41,7 +41,7 @@ export function RankingList() {
   const doGrupo = currentGrupoId
     ? participantes.filter((p) => p.grupoId === currentGrupoId && p.ativo)
     : participantes.filter((p) => p.ativo);
-  const players = participantesToPlayers(doGrupo, adminDelta, matchPts);
+  const players = participantesToPlayers(doGrupo, matchPts);
   const ranked = rankWithEff(players, adminDelta, bonus);
   const rest = ranked.slice(3); // 4º em diante
   const maxEff = ranked.length > 0 ? effPts(ranked[0], adminDelta, bonus) : 1;
