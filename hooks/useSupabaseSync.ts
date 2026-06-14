@@ -175,6 +175,14 @@ export function useSupabaseSync() {
         if (apelido) setMyChallengeDone(await loadMyChallengeDone(apelido, todayBrasilia()));
       })
 
+      // Previsões dos grupos (sincroniza entre os dispositivos do mesmo usuário)
+      .on("postgres_changes", { event: "*", schema: "public", table: "group_predictions" }, async () => {
+        const apelido = useBolao.getState().currentUserApelido;
+        if (!apelido) return;
+        const { predictions, saved } = await loadGroupPredictions(apelido);
+        if (Object.keys(predictions).length > 0) mergeGroupPredictions(predictions, saved);
+      })
+
       .subscribe();
 
     return () => {

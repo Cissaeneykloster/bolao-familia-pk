@@ -58,7 +58,7 @@ export function calcGroupPredictionPts(
     const groupMatches = allMatches.filter(
       (m) => m.group === group.name && m.phase === "grupos"
     );
-    const encerrados = groupMatches.filter((m) => m.status === "finished").length;
+    const encerrados = groupMatches.filter((m) => !!resultFix[m.id]).length;
 
     // Só calcula se ao menos 1 jogo foi encerrado
     if (encerrados === 0) {
@@ -94,9 +94,9 @@ export function calcGroupStandings(
     stats[team.name] = { ...team, j: 0, v: 0, e: 0, d: 0, sg: 0, pts: 0 };
   }
 
-  // Filtra apenas os jogos deste grupo que já foram encerrados
+  // "Encerrado" = tem resultado oficial lançado (o status do jogo não muda sozinho)
   const groupMatches = allMatches.filter(
-    (m) => m.group === group.name && m.phase === "grupos" && m.status === "finished"
+    (m) => m.group === group.name && m.phase === "grupos" && !!resultFix[m.id]
   );
 
   for (const match of groupMatches) {

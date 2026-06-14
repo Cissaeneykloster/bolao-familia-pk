@@ -340,7 +340,10 @@ export const useBolao = create<BolaoState>()(
       setDailyDraw: (d) => set({ dailyDraw: d }),
       setMyChallengeDone: (v) => set({ myChallengeDone: v }),
       setChallengePts: (m) => set({ challengePts: m }),
-      setOfficialResults: (r) => set({ officialResults: r }),
+      // Resultados oficiais (servidor autoritativo) também alimentam resultFix,
+      // que é o que a aba Grupos e os pontos de previsão usam para calcular.
+      setOfficialResults: (r) =>
+        set((s) => ({ officialResults: r, resultFix: { ...s.resultFix, ...r } })),
       setMatchPts: (pts) => set({ matchPts: pts }),
       mergeGuesses: (g) =>
         set((s) => {
