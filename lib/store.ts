@@ -8,7 +8,7 @@ import type { DesafioCat } from "./types";
 import { DESAFIO_CATS as DEFAULT_CATS, MATCHES } from "./mock-data";
 import { upsertGuess, upsertGroupPredictions } from "./supabase-sync";
 import type { DailyDraw } from "./supabase-sync";
-import { breakdown, computeMatchPts } from "./scoring";
+import { breakdown, computeMatchPts, PENALTY_START_MS } from "./scoring";
 import { isMatchLocked, arePredictionsLocked } from "./standings";
 
 // ── Tipos do estado ───────────────────────────────────────────────
@@ -461,6 +461,7 @@ export const useBolao = create<BolaoState>()(
             state.officialResults,
             allGuesses,
             state.matches,
+            PENALTY_START_MS,
           ),
         })),
 

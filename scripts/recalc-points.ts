@@ -4,7 +4,7 @@
  *   npx tsx scripts/recalc-points.ts
  */
 import { MATCHES } from "../lib/mock-data";
-import { computeMatchPts } from "../lib/scoring";
+import { computeMatchPts, PENALTY_START_MS } from "../lib/scoring";
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const KEY =
@@ -39,7 +39,7 @@ async function main() {
     (allGuesses[g.match_id] ??= {})[g.apelido] = { a: g.gols_a, b: g.gols_b };
   }
 
-  const pts = computeMatchPts(ativos, officialResults, allGuesses, MATCHES);
+  const pts = computeMatchPts(ativos, officialResults, allGuesses, MATCHES, PENALTY_START_MS);
 
   console.log(`Ativos: ${ativos.length} · resultados oficiais: ${Object.keys(officialResults).length}`);
   console.log("Pontos recalculados:", pts);

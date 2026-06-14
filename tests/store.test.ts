@@ -173,27 +173,35 @@ describe("recalcAllMatchPts — reconstrói o ranking a partir do Supabase", () 
     expect(pts["Cissa"]).toBe(0); // errou tudo no 2×1
   });
 
-  it("2 jogos seguidos sem palpite: ainda na carência (0)", () => {
-    useBolao.setState({ officialResults: { ga1r1: { sa: 1, sb: 0 }, ga2r1: { sa: 2, sb: 2 } } });
+  it("jogos ANTES do marco (14/Jun) não penalizam ausência", () => {
+    // 3 jogos seguidos sem palpite, todos antes do marco → 0
+    useBolao.setState({ officialResults: {
+      ga1r1: { sa: 1, sb: 0 }, ga2r1: { sa: 1, sb: 0 }, gb1r1: { sa: 1, sb: 0 },
+    } });
     useBolao.getState().recalcAllMatchPts(participantes, {});
     expect(useBolao.getState().matchPts["Cissa"]).toBe(0);
   });
 
-  it("3 jogos seguidos sem palpite: do 3º em diante perde -3", () => {
+  it("2 jogos seguidos sem palpite (após o marco): ainda na carência (0)", () => {
+    useBolao.setState({ officialResults: { ga1r2: { sa: 1, sb: 0 }, ga2r2: { sa: 1, sb: 0 } } });
+    useBolao.getState().recalcAllMatchPts(participantes, {});
+    expect(useBolao.getState().matchPts["Cissa"]).toBe(0);
+  });
+
+  it("3 jogos seguidos sem palpite (após o marco): do 3º em diante perde -3", () => {
     useBolao.setState({ officialResults: {
-      ga1r1: { sa: 1, sb: 0 }, ga2r1: { sa: 2, sb: 2 }, ga1r2: { sa: 0, sb: 1 },
+      ga1r2: { sa: 1, sb: 0 }, ga2r2: { sa: 1, sb: 0 }, ga1r3: { sa: 1, sb: 0 },
     } });
     useBolao.getState().recalcAllMatchPts(participantes, {});
-    // 1º e 2º carência; 3º = -3
     expect(useBolao.getState().matchPts["Cissa"]).toBe(-3);
   });
 
   it("palpitar zera a carência (idempotente)", () => {
-    // miss, miss, GUESS (zera), miss → nunca chega ao 3º consecutivo
+    // (após o marco) miss, miss, GUESS (zera), miss → nunca chega ao 3º consecutivo
     useBolao.setState({ officialResults: {
-      ga1r1: { sa: 1, sb: 0 }, ga2r1: { sa: 1, sb: 0 }, ga1r2: { sa: 1, sb: 0 }, ga2r2: { sa: 1, sb: 0 },
+      ga1r2: { sa: 1, sb: 0 }, ga2r2: { sa: 1, sb: 0 }, ga1r3: { sa: 1, sb: 0 }, ga2r3: { sa: 1, sb: 0 },
     } });
-    const allGuesses = { ga1r2: { Cissa: { a: 3, b: 3 } } }; // palpite que pontua 0, mas zera a carência
+    const allGuesses = { ga1r3: { Cissa: { a: 3, b: 3 } } }; // pontua 0, mas zera a carência
     useBolao.getState().recalcAllMatchPts(participantes, allGuesses);
     useBolao.getState().recalcAllMatchPts(participantes, allGuesses);
     expect(useBolao.getState().matchPts["Cissa"]).toBe(0);
