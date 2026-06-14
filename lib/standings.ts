@@ -16,9 +16,13 @@ export const COPA_FIRST_KICKOFF_MS = new Date("2026-06-11T19:00:00Z").getTime();
 export const GROUP_PREDICTIONS_DEADLINE_MS =
   COPA_FIRST_KICKOFF_MS + 10 * 24 * 60 * 60 * 1000; // 21/Jun 16h BRT
 
-/** Verifica se as previsões dos grupos estão travadas */
-export function arePredictionsLocked(saved: boolean, now = Date.now()): boolean {
-  return saved || now >= GROUP_PREDICTIONS_DEADLINE_MS;
+/**
+ * Verifica se as previsões dos grupos estão travadas.
+ * Até o prazo (GROUP_PREDICTIONS_DEADLINE_MS) TODOS podem editar — inclusive
+ * quem já preencheu/salvou. Só trava de fato quando o prazo encerra.
+ */
+export function arePredictionsLocked(_saved: boolean, now = Date.now()): boolean {
+  return now >= GROUP_PREDICTIONS_DEADLINE_MS;
 }
 
 /**
