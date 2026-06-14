@@ -240,19 +240,19 @@ export function RegulamentoScreen() {
         </div>
 
         <div>
-          <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>⏰ Horários (referência Vancouver, Canadá):</p>
+          <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>⏰ Sorteio automático:</p>
           <Tabela rows={[
-            ["Sorteio / Abertura", "01h Vancouver · 05h Brasília · 09h Lisboa"],
-            ["Encerramento",       "00h Vancouver · 04h Brasília · 08h Lisboa"],
-            ["Janela aberta",      "~23 horas por dia"],
+            ["Quando", "Todo dia às 07h00 (horário de Brasília)"],
+            ["Quem sorteia", "O sistema — propaga para todos do grupo"],
+            ["Onde aparece", "Aba 🎯 Desafios"],
           ]} />
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {[
-            "✅ Marque 'Fiz!' no app dentro da janela → ganha os pontos",
-            "❌ Não marcou até encerrar → perde os pontos automaticamente",
-            "🔒 Após o encerramento o desafio é bloqueado — não pode mais alterar",
+            "🎲 Às 07h o sistema sorteia 1 desafio para o grupo — todos veem o mesmo",
+            "✅ Marque 'Fiz!' → ganha os pontos · ❌ 'Não fiz' → perde os pontos",
+            "🏅 Os pontos dos desafios entram no ranking geral",
             "📸 Tire foto e poste no grupo do WhatsApp como comprovação",
             "🔄 O sorteio pode repetir desafios — tudo bem!",
           ].map((item, i) => (
@@ -285,9 +285,9 @@ export function RegulamentoScreen() {
           </p>
           {[
             "Preencha 1º e 2º classificado dos 12 grupos",
-            "Clique 'Salvar e Travar Previsões' — após salvar, não pode mais alterar",
-            "Se não salvar, trava automaticamente no início do 1º jogo (11/Jun 16h BRT)",
-            "Só depois de salvar, os palpites dos jogos são liberados",
+            "Clique 'Salvar Previsões' — dá pra editar à vontade até o prazo final",
+            "Prazo final: 21/Jun (16h BRT). Depois disso, as previsões travam para todos",
+            "Os palpites dos jogos são independentes — não precisa terminar os grupos antes",
           ].map((item, i) => (
             <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: "var(--text)", marginBottom: 4 }}>
               <span style={{ color: "var(--neon)", flexShrink: 0 }}>{i + 1}.</span>
@@ -316,12 +316,33 @@ export function RegulamentoScreen() {
       {/* Prazo */}
       <Secao titulo="8. Prazo para Palpites dos Jogos">
         <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>
-          Os palpites ficam abertos até <strong style={{ color: "var(--warn)" }}>5 minutos após o início</strong> de cada jogo.
-          Após esse prazo, não é possível fazer ou alterar palpites para aquela partida.
+          Os palpites de cada jogo ficam abertos até <strong style={{ color: "var(--warn)" }}>o início da partida</strong>.
+          Quando o jogo começa, não é mais possível fazer ou alterar o palpite daquela partida.
         </p>
         <p style={{ fontSize: 12, color: "var(--muted)" }}>
           O contador de tempo aparece em cada jogo na tela ⚽ Jogos.
         </p>
+      </Secao>
+
+      {/* Ausência de palpites */}
+      <Secao titulo="9. Ausência de Palpites (penalidade)">
+        <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>
+          Jogos finalizados <strong>consecutivos</strong> sem palpite têm carência: os{" "}
+          <strong>2 primeiros</strong> não tiram pontos. A partir do{" "}
+          <strong style={{ color: "var(--danger)" }}>3º jogo seguido sem palpite</strong> você perde{" "}
+          <strong style={{ color: "var(--danger)" }}>−3 pts</strong> por jogo. Assim que voltar a palpitar,
+          a contagem zera e a carência de 2 recomeça.
+        </p>
+        <Exemplo
+          titulo="Sequência de jogos finalizados sem palpite"
+          linhas={[
+            { icon: "🆗", texto: "1º jogo seguido sem palpite (carência)", pts: "0" },
+            { icon: "🆗", texto: "2º jogo seguido sem palpite (carência)", pts: "0" },
+            { icon: "❌", texto: "3º jogo seguido sem palpite", pts: "−3" },
+            { icon: "❌", texto: "4º jogo seguido sem palpite", pts: "−3" },
+            { icon: "✅", texto: "Palpitou de novo → zera a contagem", pts: "—" },
+          ]}
+        />
       </Secao>
     </div>
   );

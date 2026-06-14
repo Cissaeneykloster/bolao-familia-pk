@@ -173,16 +173,30 @@ describe("recalcAllMatchPts — reconstrói o ranking a partir do Supabase", () 
     expect(pts["Cissa"]).toBe(0); // errou tudo no 2×1
   });
 
-  it("sem palpite no jogo = -3; idempotente ao repetir", () => {
-    useBolao.setState({ officialResults: { ga1r1: { sa: 1, sb: 0 } } });
-    const allGuesses = { ga1r1: { Nino: { a: 1, b: 0 } } };
+  it("2 jogos seguidos sem palpite: ainda na carência (0)", () => {
+    useBolao.setState({ officialResults: { ga1r1: { sa: 1, sb: 0 }, ga2r1: { sa: 2, sb: 2 } } });
+    useBolao.getState().recalcAllMatchPts(participantes, {});
+    expect(useBolao.getState().matchPts["Cissa"]).toBe(0);
+  });
 
+  it("3 jogos seguidos sem palpite: do 3º em diante perde -3", () => {
+    useBolao.setState({ officialResults: {
+      ga1r1: { sa: 1, sb: 0 }, ga2r1: { sa: 2, sb: 2 }, ga1r2: { sa: 0, sb: 1 },
+    } });
+    useBolao.getState().recalcAllMatchPts(participantes, {});
+    // 1º e 2º carência; 3º = -3
+    expect(useBolao.getState().matchPts["Cissa"]).toBe(-3);
+  });
+
+  it("palpitar zera a carência (idempotente)", () => {
+    // miss, miss, GUESS (zera), miss → nunca chega ao 3º consecutivo
+    useBolao.setState({ officialResults: {
+      ga1r1: { sa: 1, sb: 0 }, ga2r1: { sa: 1, sb: 0 }, ga1r2: { sa: 1, sb: 0 }, ga2r2: { sa: 1, sb: 0 },
+    } });
+    const allGuesses = { ga1r2: { Cissa: { a: 3, b: 3 } } }; // palpite que pontua 0, mas zera a carência
     useBolao.getState().recalcAllMatchPts(participantes, allGuesses);
     useBolao.getState().recalcAllMatchPts(participantes, allGuesses);
-
-    const pts = useBolao.getState().matchPts;
-    expect(pts["Nino"]).toBe(25);
-    expect(pts["Cissa"]).toBe(-3);
+    expect(useBolao.getState().matchPts["Cissa"]).toBe(0);
   });
 
   it("resultado de jogo desconhecido é ignorado sem quebrar", () => {
