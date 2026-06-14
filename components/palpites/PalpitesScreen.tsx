@@ -109,19 +109,13 @@ export function PalpitesScreen() {
         </button>
 
         <button
-          onClick={() => {
-            if (!predLocked && previsoes < 12) {
-              show("⚠️ Salve as previsões dos grupos primeiro!");
-              return;
-            }
-            setTab("jogos");
-          }}
+          onClick={() => setTab("jogos")}
           style={{
             flex: 1, padding: "10px 0", borderRadius: 10, fontWeight: 700, fontSize: 13,
             border: `1px solid ${tab === "jogos" ? "var(--neon)" : "var(--border)"}`,
             background: tab === "jogos" ? "var(--neon-soft)" : "transparent",
-            color: tab === "jogos" ? "var(--neon)" : (!predLocked && previsoes < 12) ? "var(--muted)" : "var(--muted)",
-            cursor: "pointer", opacity: (!predLocked && previsoes < 12) ? 0.5 : 1,
+            color: tab === "jogos" ? "var(--neon)" : "var(--muted)",
+            cursor: "pointer",
           }}
         >
           ⚽ Palpites dos Jogos
