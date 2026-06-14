@@ -136,6 +136,7 @@ interface BolaoState {
   setAdminUnlocked: (v: boolean) => void;
   setAdminGrupo: (grupoId: string | null) => void;
   setAdminDelta: (name: string, delta: number) => void;
+  setAdminDeltas: (m: Record<string, number>) => void;
   resetAdminDelta: (name: string) => void;
   setBetFix: (id: string, score: { a: number; b: number }) => void;
   // Salva resultado E recalcula pontos (exceto treinos — não contam para ranking)
@@ -418,6 +419,9 @@ export const useBolao = create<BolaoState>()(
         set((state) => ({
           adminDelta: { ...state.adminDelta, [name]: (state.adminDelta[name] ?? 0) + delta },
         })),
+
+      // Substitui todo o mapa (usado ao carregar do Supabase)
+      setAdminDeltas: (m) => set({ adminDelta: m }),
 
       resetAdminDelta: (name) =>
         set((state) => {

@@ -138,6 +138,25 @@ export async function upsertMatchPtsBatch(ptsMap: Record<string, number>) {
   if (error) console.error("[SB] upsertMatchPtsBatch:", error.message);
 }
 
+// ── Ajuste manual de pontos do admin (adminDelta) ─────────────────
+
+/** Carrega os ajustes manuais de pontos → { apelido: delta } */
+export async function loadAdminDeltas(): Promise<Record<string, number>> {
+  const { data, error } = await supabase.from("admin_deltas").select("*");
+  if (error) { console.error("[SB] loadAdminDeltas:", error.message); return {}; }
+  return Object.fromEntries(
+    (data ?? []).filter((r) => r.delta !== 0).map((r) => [r.apelido, r.delta])
+  );
+}
+
+/** Grava/atualiza o ajuste manual de um participante (propaga via Realtime) */
+export async function upsertAdminDelta(apelido: string, delta: number, grupoId = "") {
+  const { error } = await supabase.from("admin_deltas").upsert({
+    apelido, grupo_id: grupoId, delta, updated_at: nowBrasilia(),
+  });
+  if (error) console.error("[SB] upsertAdminDelta:", error.message);
+}
+
 // ── Palpites ──────────────────────────────────────────────────────
 
 /** Carrega palpites do participante atual */

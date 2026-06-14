@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import {
   loadParticipantes, loadOfficialResults, loadMatchPts, loadGuesses,
   loadGroupPredictions, backfillGuesses, upsertGroupPredictions,
-  loadMatches, syncAllMatches,
+  loadMatches, syncAllMatches, loadAdminDeltas,
 } from "@/lib/supabase-sync";
 import { MATCHES } from "@/lib/mock-data";
 
@@ -20,6 +20,7 @@ export function useSupabaseSync() {
     setMatches,
     setOfficialResults,
     setMatchPts,
+    setAdminDeltas,
     mergeGuesses,
     mergeGroupPredictions,
     currentUserApelido,
@@ -53,6 +54,9 @@ export function useSupabaseSync() {
       // Carrega pontos
       const pts = await loadMatchPts();
       if (Object.keys(pts).length > 0) setMatchPts(pts);
+
+      // Carrega ajustes manuais do admin (sempre sobrescreve — servidor é autoritativo)
+      setAdminDeltas(await loadAdminDeltas());
 
       // Carrega palpites e previsões do usuário atual (se identificado)
       if (currentUserApelido) {
@@ -120,11 +124,16 @@ export function useSupabaseSync() {
         if (m.length > 0) setMatches(m);
       })
 
+      // Ajuste manual de pontos do admin
+      .on("postgres_changes", { event: "*", schema: "public", table: "admin_deltas" }, async () => {
+        setAdminDeltas(await loadAdminDeltas());
+      })
+
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
       clearInterval(pollId);
     };
-  }, [setParticipantes, setMatches, setOfficialResults, setMatchPts, mergeGuesses, mergeGroupPredictions, currentUserApelido]);
+  }, [setParticipantes, setMatches, setOfficialResults, setMatchPts, setAdminDeltas, mergeGuesses, mergeGroupPredictions, currentUserApelido]);
 }

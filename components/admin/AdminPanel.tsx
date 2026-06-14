@@ -9,7 +9,7 @@ import { useDesafioCats } from "@/lib/useDesafios";
 import {
   upsertParticipante, deleteParticipante, updateParticipanteDb,
   upsertOfficialResult, upsertMatchPtsBatch, syncAllOfficialResults, resetMatchPtsDb,
-  loadAllGuesses,
+  loadAllGuesses, upsertAdminDelta,
 } from "@/lib/supabase-sync";
 
 type AdminTab = "pontos" | "palpites" | "resultados" | "participantes" | "desafios";
@@ -120,10 +120,12 @@ function TabDesafios() {
 
 // ── Aba Pontos ───────────────────────────────────────────────────
 function TabPontos() {
-  const { adminDelta, setAdminDelta, resetAdminDelta, desafios, comboBank, penalty, participantes, adminGrupoId, resetMatchPts, matchPts, recalcAllMatchPts } = useBolao();
+  const { adminDelta, setAdminDeltas, desafios, comboBank, penalty, participantes, adminGrupoId, resetMatchPts, matchPts, recalcAllMatchPts } = useBolao();
   const [recalcing, setRecalcing] = useState(false);
   const [recalcMsg, setRecalcMsg] = useState("");
   const [sortAZ, setSortAZ] = useState(false);
+  const [pending, setPending] = useState<Record<string, number>>({});
+  const [saveMsg, setSaveMsg] = useState("");
   const DESAFIO_CATS = useDesafioCats();
   const bonus = bonusPts(desafios, DESAFIO_CATS, comboBank, penalty);
   const meusPart = participantes.filter((p) => p.grupoId === adminGrupoId && p.ativo);
@@ -134,6 +136,25 @@ function TabPontos() {
     : rankWithEff(players, adminDelta, bonus);
 
   const totalMatchPts = Object.values(matchPts).reduce((s, v) => s + Math.abs(v), 0);
+
+  const pendingCount = Object.values(pending).filter((v) => v !== 0).length;
+
+  // Confirma os ajustes pendentes: grava no Supabase (propaga via Realtime)
+  const confirmar = async () => {
+    const next = { ...adminDelta };
+    const writes: Promise<unknown>[] = [];
+    for (const [apelido, change] of Object.entries(pending)) {
+      if (!change) continue;
+      const v = (adminDelta[apelido] ?? 0) + change;
+      next[apelido] = v;
+      writes.push(upsertAdminDelta(apelido, v, adminGrupoId ?? ""));
+    }
+    setAdminDeltas(next);
+    await Promise.all(writes);
+    setPending({});
+    setSaveMsg("✅ Ajustes salvos e enviados a todos!");
+    setTimeout(() => setSaveMsg(""), 4000);
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -227,9 +248,53 @@ function TabPontos() {
         ))}
       </div>
 
+      {/* Barra de confirmação dos ajustes manuais */}
+      {(pendingCount > 0 || saveMsg) && (
+        <div style={{
+          position: "sticky", top: 0, zIndex: 2,
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+          padding: "10px 12px", borderRadius: 10,
+          background: pendingCount > 0 ? "rgba(255,216,77,0.1)" : "rgba(0,255,135,0.08)",
+          border: `1px solid ${pendingCount > 0 ? "rgba(255,216,77,0.4)" : "rgba(0,255,135,0.3)"}`,
+        }}>
+          {pendingCount > 0 ? (
+            <>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--warn)" }}>
+                {pendingCount} ajuste(s) pendente(s)
+              </span>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  onClick={() => setPending({})}
+                  style={{
+                    padding: "6px 12px", borderRadius: 7, fontSize: 12, fontWeight: 700,
+                    border: "1px solid var(--border)", background: "transparent",
+                    color: "var(--muted)", cursor: "pointer",
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmar}
+                  style={{
+                    padding: "6px 14px", borderRadius: 7, fontSize: 12, fontWeight: 700,
+                    border: "none", background: "var(--neon)", color: "#000", cursor: "pointer",
+                  }}
+                >
+                  ✓ Confirmar para todos
+                </button>
+              </div>
+            </>
+          ) : (
+            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--neon)" }}>{saveMsg}</span>
+          )}
+        </div>
+      )}
+
       {ranked.map((p) => {
-        const pts = effPts(p, adminDelta, bonus);
-        const delta = adminDelta[p.name] ?? 0;
+        const confirmed = adminDelta[p.name] ?? 0;
+        const pend = pending[p.name] ?? 0;
+        const eff = confirmed + pend;
+        const pts = effPts(p, { ...adminDelta, [p.name]: eff }, bonus);
         return (
           <div
             key={p.name}
@@ -251,10 +316,13 @@ function TabPontos() {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{p.name}</span>
-              {delta !== 0 && (
-                <span style={{ fontSize: 11, color: delta > 0 ? "var(--ok)" : "var(--danger)", marginLeft: 6 }}>
-                  ({delta > 0 ? "+" : ""}{delta})
+              {eff !== 0 && (
+                <span style={{ fontSize: 11, color: eff > 0 ? "var(--ok)" : "var(--danger)", marginLeft: 6 }}>
+                  ({eff > 0 ? "+" : ""}{eff})
                 </span>
+              )}
+              {pend !== 0 && (
+                <span style={{ fontSize: 10, color: "var(--warn)", marginLeft: 6 }}>pendente</span>
               )}
             </div>
             <span className="font-bebas" style={{ fontSize: 20, color: "var(--text)" }}>{pts}</span>
@@ -264,7 +332,7 @@ function TabPontos() {
               <button
                 key={d}
                 aria-label={`${p.name} ${d > 0 ? "+" : ""}${d}`}
-                onClick={() => setAdminDelta(p.name, d)}
+                onClick={() => setPending((pd) => ({ ...pd, [p.name]: (pd[p.name] ?? 0) + d }))}
                 style={{
                   width: 32, height: 32, borderRadius: 6, fontSize: 11, fontWeight: 700,
                   border: `1px solid ${d > 0 ? "rgba(0,255,135,0.3)" : "rgba(255,90,90,0.3)"}`,
@@ -276,21 +344,6 @@ function TabPontos() {
                 {d > 0 ? "+" : ""}{d}
               </button>
             ))}
-
-            {/* Reset */}
-            {delta !== 0 && (
-              <button
-                aria-label={`Resetar ${p.name}`}
-                onClick={() => resetAdminDelta(p.name)}
-                style={{
-                  width: 28, height: 28, borderRadius: 6, fontSize: 14,
-                  border: "1px solid var(--border)", background: "transparent",
-                  color: "var(--muted)", cursor: "pointer", flexShrink: 0,
-                }}
-              >
-                ↺
-              </button>
-            )}
           </div>
         );
       })}
