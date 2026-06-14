@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MATCHES } from "@/lib/mock-data";
+import { useBolao } from "@/lib/store";
 import { JogoCard } from "./JogoCard";
 
 type Fase = "amistoso" | "grupos" | "oitavas" | "quartas" | "semi" | "final";
@@ -16,7 +16,8 @@ const FASES: { id: Fase; label: string; emoji: string }[] = [
 
 export function FaseTabs() {
   const [fase, setFase] = useState<Fase>("amistoso");
-  const filtered = MATCHES.filter((m) => m.phase === fase);
+  const matches = useBolao((s) => s.matches);
+  const filtered = matches.filter((m) => m.phase === fase);
   // Ordena por kickoff
   const sorted = [...filtered].sort((a, b) => (a.kickoff ?? 0) - (b.kickoff ?? 0));
 
@@ -26,7 +27,7 @@ export function FaseTabs() {
       <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
         {FASES.map((f) => {
           const active = fase === f.id;
-          const count = MATCHES.filter((m) => m.phase === f.id).length;
+          const count = matches.filter((m) => m.phase === f.id).length;
           if (count === 0) return null;
           return (
             <button

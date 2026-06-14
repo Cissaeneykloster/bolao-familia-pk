@@ -48,3 +48,20 @@ export interface DbGroupPrediction {
   second_team: string;
   saved: boolean;
 }
+
+export interface DbMatch {
+  id: string;
+  ord: number;
+  phase: string;
+  grupo: string;
+  rodada: number | null;
+  training: boolean;
+  status: string;
+  team_a: string;
+  flag_a: string;
+  team_b: string;
+  flag_b: string;
+  kickoff: string | null;
+  label: string;
+  updated_at: string;
+}

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useBolao } from "@/lib/store";
 import { mScore } from "@/lib/scoring";
-import { MATCHES, GROUPS } from "@/lib/mock-data";
+import { GROUPS } from "@/lib/mock-data";
 import { PlacarInput } from "./PlacarInput";
 import { Breakdown } from "./Breakdown";
 import { PrevisaoGrupos } from "./PrevisaoGrupos";
@@ -14,18 +14,18 @@ import { arePredictionsLocked, calcGroupPredictionPts } from "@/lib/standings";
 type Tab = "grupos" | "jogos";
 
 export function PalpitesScreen() {
-  const { guesses, resultFix, groupPredictions, groupPredictionsSaved, addFeedEvent, officialResults, currentUserApelido } = useBolao();
+  const { guesses, resultFix, groupPredictions, groupPredictionsSaved, addFeedEvent, officialResults, currentUserApelido, matches } = useBolao();
   const { show } = useToast();
   const { fire } = useConfetti();
 
   const predLocked = arePredictionsLocked(groupPredictionsSaved);
-  const { total: ptsPrev } = calcGroupPredictionPts(groupPredictions, GROUPS, MATCHES, resultFix);
+  const { total: ptsPrev } = calcGroupPredictionPts(groupPredictions, GROUPS, matches, resultFix);
 
   // Decide qual aba mostrar por padrão
   const [tab, setTab] = useState<Tab>(predLocked ? "jogos" : "grupos");
 
   // Conta palpites dos jogos
-  const copaMatches = MATCHES.filter((m) => m.phase !== "amistoso");
+  const copaMatches = matches.filter((m) => m.phase !== "amistoso");
   const apostados = copaMatches.filter((m) => guesses[m.id]).length;
   const pct = copaMatches.length > 0 ? Math.round((apostados / copaMatches.length) * 100) : 0;
 
@@ -38,7 +38,7 @@ export function PalpitesScreen() {
   const handleSaved = (matchId: string) => {
     show("✅ Palpite salvo!");
     const g = guesses[matchId];
-    const match = MATCHES.find((m) => m.id === matchId);
+    const match = matches.find((m) => m.id === matchId);
     if (g && match) {
       addFeedEvent({
         type: "sent",
@@ -59,7 +59,7 @@ export function PalpitesScreen() {
   };
 
   // Todos ordenados por data/hora
-  const sortedMatches = [...MATCHES].sort((a, b) => (a.kickoff ?? 0) - (b.kickoff ?? 0));
+  const sortedMatches = [...matches].sort((a, b) => (a.kickoff ?? 0) - (b.kickoff ?? 0));
   const upcoming = sortedMatches.filter((m) => m.status === "upcoming" && !m.training);
   const training = sortedMatches.filter((m) => m.training);
   const finished = sortedMatches.filter((m) => m.status === "finished" && !m.training);

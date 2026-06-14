@@ -6,6 +6,7 @@
  */
 import { supabase } from "./supabase";
 import type { Participante } from "./mock-data";
+import type { Match } from "./types";
 
 // ── Timestamp em horário de Brasília ─────────────────────────────
 // Brasília não tem horário de verão desde 2019 → offset fixo -03:00.
@@ -198,6 +199,65 @@ export async function upsertGuess(apelido: string, matchId: string, a: number, b
   }, { onConflict: "apelido,match_id" });
   if (error) console.error("[SB] upsertGuess:", error.message);
   return !error;
+}
+
+// ── Jogos (matches) ───────────────────────────────────────────────
+
+/** Carrega todos os jogos do Supabase, ordenados, convertendo para o tipo Match */
+export async function loadMatches(): Promise<Match[]> {
+  const { data, error } = await supabase
+    .from("matches")
+    .select("*")
+    .order("ord", { ascending: true });
+  if (error) { console.error("[SB] loadMatches:", error.message); return []; }
+
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    phase: r.phase,
+    group: r.grupo,
+    rodada: r.rodada ?? undefined,
+    training: r.training,
+    status: r.status,
+    a: { name: r.team_a, flag: r.flag_a },
+    b: { name: r.team_b, flag: r.flag_b },
+    kickoff: r.kickoff ? new Date(r.kickoff).getTime() : undefined,
+    label: r.label || undefined,
+  })) as Match[];
+}
+
+/** Converte um Match do app para a linha do Supabase */
+function matchToRow(m: Match, ord: number) {
+  return {
+    id: m.id,
+    ord,
+    phase: m.phase,
+    grupo: m.group,
+    rodada: m.rodada ?? null,
+    training: m.training ?? false,
+    status: m.status,
+    team_a: m.a.name,
+    flag_a: m.a.flag,
+    team_b: m.b.name,
+    flag_b: m.b.flag,
+    kickoff: m.kickoff ? new Date(m.kickoff).toISOString() : null,
+    label: m.label ?? "",
+    updated_at: nowBrasilia(),
+  };
+}
+
+/** Sobe TODOS os jogos para o Supabase (seed/sincronização em lote) */
+export async function syncAllMatches(matches: Match[]): Promise<number> {
+  const rows = matches.map((m, i) => matchToRow(m, i));
+  if (rows.length === 0) return 0;
+  const { error } = await supabase.from("matches").upsert(rows);
+  if (error) { console.error("[SB] syncAllMatches:", error.message); return 0; }
+  return rows.length;
+}
+
+/** Atualiza/insere um jogo (admin edita data/hora/etc.) */
+export async function upsertMatch(m: Match, ord = 0) {
+  const { error } = await supabase.from("matches").upsert(matchToRow(m, ord));
+  if (error) console.error("[SB] upsertMatch:", error.message);
 }
 
 // ── Previsão dos grupos ───────────────────────────────────────────
