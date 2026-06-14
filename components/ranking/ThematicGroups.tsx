@@ -18,11 +18,15 @@ export function ThematicGroups() {
   const players = participantesToPlayers(doGrupo, matchPts, challengePts);
   const ranked = rankWithEff(players, adminDelta, bonus);
 
-  if (ranked.length === 0) return null;
+  // Pódio (1º, 2º, 3º) fica fora; só do 4º em diante entra nos grupos temáticos
+  if (ranked.length <= 3) return null;
 
-  // Encaixa cada participante num tier por quartil de posição (percentil)
+  // Tier por quartil de posição (percentil sobre o ranking completo), pulando o top 3
   const groups: Player[][] = TIERS.map(() => []);
-  ranked.forEach((p, i) => groups[tierForRank(i, ranked.length)].push(p));
+  ranked.forEach((p, i) => {
+    if (i < 3) return; // 1º, 2º e 3º aparecem no pódio
+    groups[tierForRank(i, ranked.length)].push(p);
+  });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -30,7 +34,7 @@ export function ThematicGroups() {
         🎭 Grupos Temáticos
       </h3>
       <p style={{ fontSize: 11, color: "var(--muted)", margin: "0 0 2px" }}>
-        Cada um encaixado pela sua posição no ranking (quartis).
+        Do 4º colocado em diante, encaixados pela posição no ranking (quartis).
       </p>
 
       {TIERS.map((tier, ti) => {
