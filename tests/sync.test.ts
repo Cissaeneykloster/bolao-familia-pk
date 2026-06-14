@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 // Mocka a camada de sync para observar as chamadas feitas pelo store
 vi.mock("@/lib/supabase-sync", () => ({
@@ -165,22 +165,23 @@ describe("isMatchLocked — palpite trava quando a partida começa", () => {
   });
 });
 
-describe("saveGuess — respeita a trava do kickoff", () => {
-  it("partida já iniciada: não grava nem local nem no Supabase", () => {
-    const past = MATCHES.find(
-      (m) => !m.training && m.kickoff && m.kickoff + EXTRA_MS_AFTER_KICKOFF < Date.now(),
-    );
-    expect(past, "esperava ao menos um jogo já iniciado no calendário").toBeDefined();
+describe("saveGuess — jogo iniciado trava sempre (kickoff)", () => {
+  const started = MATCHES.find((m) => !m.training && m.kickoff && m.kickoff < new Date("2026-06-14T00:00:00Z").getTime());
+  const future = MATCHES.find((m) => !m.training && m.kickoff && m.kickoff > new Date("2026-06-26T00:00:00Z").getTime());
 
-    useBolao.setState({ currentUserApelido: "Nino", guesses: { [past!.id]: { a: 1, b: 0 } } });
-    useBolao.getState().saveGuess(past!.id);
+  afterEach(() => vi.useRealTimers());
+
+  it("jogo já iniciado: não grava nem local nem no Supabase", () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date("2026-06-15T12:00:00Z"));
+    expect(started, "esperava um jogo já iniciado no calendário").toBeDefined();
+    useBolao.setState({ currentUserApelido: "Nino", guesses: { [started!.id]: { a: 1, b: 0 } } });
+    useBolao.getState().saveGuess(started!.id);
     expect(upsertGuess).not.toHaveBeenCalled();
   });
 
-  it("partida futura: grava normalmente", () => {
-    const future = MATCHES.find((m) => !m.training && m.kickoff && m.kickoff > Date.now() + 60_000);
-    expect(future, "esperava ao menos um jogo futuro no calendário").toBeDefined();
-
+  it("jogo futuro: grava normalmente", () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date("2026-06-15T12:00:00Z"));
+    expect(future, "esperava um jogo futuro no calendário").toBeDefined();
     useBolao.setState({ currentUserApelido: "Nino", guesses: { [future!.id]: { a: 2, b: 2 } } });
     useBolao.getState().saveGuess(future!.id);
     expect(upsertGuess).toHaveBeenCalledWith("Nino", future!.id, 2, 2);

@@ -9,7 +9,7 @@ import { DESAFIO_CATS as DEFAULT_CATS, MATCHES } from "./mock-data";
 import { upsertGuess, upsertGroupPredictions } from "./supabase-sync";
 import type { DailyDraw } from "./supabase-sync";
 import { breakdown } from "./scoring";
-import { isMatchLocked } from "./standings";
+import { isMatchLocked, arePredictionsLocked } from "./standings";
 
 // ── Tipos do estado ───────────────────────────────────────────────
 
@@ -355,7 +355,8 @@ export const useBolao = create<BolaoState>()(
 
       setGroupPrediction: (group, first, second) =>
         set((s) => {
-          if (s.groupPredictionsSaved) return {}; // já travado
+          // Até o prazo, todos podem editar (mesmo já tendo salvo)
+          if (arePredictionsLocked(s.groupPredictionsSaved)) return {};
           return {
             groupPredictions: { ...s.groupPredictions, [group]: { first, second } },
           };
