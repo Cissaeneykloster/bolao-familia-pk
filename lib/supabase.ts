@@ -49,6 +49,13 @@ export interface DbGroupPrediction {
   saved: boolean;
 }
 
+export interface DbAdminDelta {
+  apelido: string;
+  grupo_id: string;
+  delta: number;
+  updated_at: string;
+}
+
 export interface DbMatch {
   id: string;
   ord: number;
