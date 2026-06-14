@@ -56,6 +56,31 @@ describe("breakdown", () => {
   });
 });
 
+describe("empate computa o 'Vencedor' (5 pts)", () => {
+  const winnerRow = (r: ReturnType<typeof breakdown>) =>
+    r.rows.find((x) => x.key === "winner")!;
+
+  it("empate previsto e ocorrido marca o vencedor com 5 pts", () => {
+    const r = breakdown({ sa: 0, sb: 0 }, { a: 2, b: 2 });
+    expect(winnerRow(r).hit).toBe(true);
+    expect(winnerRow(r).pts).toBe(5);
+  });
+
+  it("empate exato inclui os 5 do vencedor (placar exato = 25)", () => {
+    const r = breakdown({ sa: 1, sb: 1 }, { a: 1, b: 1 });
+    expect(winnerRow(r).hit).toBe(true);
+    expect(r.total).toBe(25);
+  });
+
+  it("empate real, mas palpite de vitória NÃO marca vencedor", () => {
+    expect(winnerRow(breakdown({ sa: 1, sb: 1 }, { a: 2, b: 1 })).hit).toBe(false);
+  });
+
+  it("vitória real, mas palpite de empate NÃO marca vencedor", () => {
+    expect(winnerRow(breakdown({ sa: 2, sb: 1 }, { a: 1, b: 1 })).hit).toBe(false);
+  });
+});
+
 describe("mScore", () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const m = { id: "m1", sa: 2, sb: 1 } as any;

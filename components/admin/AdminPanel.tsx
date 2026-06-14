@@ -125,7 +125,6 @@ function TabPontos() {
   const [recalcMsg, setRecalcMsg] = useState("");
   const [sortAZ, setSortAZ] = useState(false);
   const [pending, setPending] = useState<Record<string, number>>({});
-  const [saveMsg, setSaveMsg] = useState("");
   const DESAFIO_CATS = useDesafioCats();
   const bonus = bonusPts(desafios, DESAFIO_CATS, comboBank, penalty);
   const meusPart = participantes.filter((p) => p.grupoId === adminGrupoId && p.ativo);
@@ -136,29 +135,27 @@ function TabPontos() {
     : rankWithEff(players, adminDelta, bonus);
 
   const totalMatchPts = Object.values(matchPts).reduce((s, v) => s + Math.abs(v), 0);
+  // Ferramentas de ranking (recalcular / zerar) ocultas a pedido
+  const showRankingTools = false;
 
-  const pendingCount = Object.values(pending).filter((v) => v !== 0).length;
+  // Cancela o ajuste pendente de um participante
+  const cancelarUm = (apelido: string) =>
+    setPending((pd) => { const n = { ...pd }; delete n[apelido]; return n; });
 
-  // Confirma os ajustes pendentes: grava no Supabase (propaga via Realtime)
-  const confirmar = async () => {
-    const next = { ...adminDelta };
-    const writes: Promise<unknown>[] = [];
-    for (const [apelido, change] of Object.entries(pending)) {
-      if (!change) continue;
-      const v = (adminDelta[apelido] ?? 0) + change;
-      next[apelido] = v;
-      writes.push(upsertAdminDelta(apelido, v, adminGrupoId ?? ""));
-    }
-    setAdminDeltas(next);
-    await Promise.all(writes);
-    setPending({});
-    setSaveMsg("✅ Ajustes salvos e enviados a todos!");
-    setTimeout(() => setSaveMsg(""), 4000);
+  // Confirma o ajuste pendente de UM participante: grava no Supabase (propaga via Realtime)
+  const confirmarUm = async (apelido: string) => {
+    const change = pending[apelido] ?? 0;
+    if (!change) return;
+    const v = (adminDelta[apelido] ?? 0) + change;
+    setAdminDeltas({ ...adminDelta, [apelido]: v });
+    setPending((pd) => { const n = { ...pd }; delete n[apelido]; return n; });
+    await upsertAdminDelta(apelido, v, adminGrupoId ?? "");
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {/* Recalcular ranking a partir do Supabase */}
+      {/* Recalcular ranking — oculto a pedido (showRankingTools) */}
+      {showRankingTools && (
       <div style={{
         padding: "10px 14px", borderRadius: 10,
         background: "rgba(0,255,135,0.05)", border: "1px solid rgba(0,255,135,0.2)",
@@ -193,9 +190,10 @@ function TabPontos() {
           ♻️ Recalcular
         </button>
       </div>
+      )}
 
-      {/* Botão zerar ranking */}
-      {totalMatchPts > 0 && (
+      {/* Botão zerar ranking — oculto a pedido (showRankingTools) */}
+      {showRankingTools && totalMatchPts > 0 && (
         <div style={{
           padding: "10px 14px", borderRadius: 10,
           background: "rgba(255,90,90,0.06)", border: "1px solid rgba(255,90,90,0.25)",
@@ -247,48 +245,6 @@ function TabPontos() {
           </button>
         ))}
       </div>
-
-      {/* Barra de confirmação dos ajustes manuais */}
-      {(pendingCount > 0 || saveMsg) && (
-        <div style={{
-          position: "sticky", top: 0, zIndex: 2,
-          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-          padding: "10px 12px", borderRadius: 10,
-          background: pendingCount > 0 ? "rgba(255,216,77,0.1)" : "rgba(0,255,135,0.08)",
-          border: `1px solid ${pendingCount > 0 ? "rgba(255,216,77,0.4)" : "rgba(0,255,135,0.3)"}`,
-        }}>
-          {pendingCount > 0 ? (
-            <>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--warn)" }}>
-                {pendingCount} ajuste(s) pendente(s)
-              </span>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button
-                  onClick={() => setPending({})}
-                  style={{
-                    padding: "6px 12px", borderRadius: 7, fontSize: 12, fontWeight: 700,
-                    border: "1px solid var(--border)", background: "transparent",
-                    color: "var(--muted)", cursor: "pointer",
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={confirmar}
-                  style={{
-                    padding: "6px 14px", borderRadius: 7, fontSize: 12, fontWeight: 700,
-                    border: "none", background: "var(--neon)", color: "#000", cursor: "pointer",
-                  }}
-                >
-                  ✓ Confirmar para todos
-                </button>
-              </div>
-            </>
-          ) : (
-            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--neon)" }}>{saveMsg}</span>
-          )}
-        </div>
-      )}
 
       {ranked.map((p) => {
         const confirmed = adminDelta[p.name] ?? 0;
@@ -344,6 +300,34 @@ function TabPontos() {
                 {d > 0 ? "+" : ""}{d}
               </button>
             ))}
+
+            {/* Cancelar / Confirmar — só aparecem se houver mudança pendente */}
+            {pend !== 0 && (
+              <>
+                <button
+                  aria-label={`Cancelar ${p.name}`}
+                  onClick={() => cancelarUm(p.name)}
+                  style={{
+                    width: 32, height: 32, borderRadius: 6, fontSize: 13, fontWeight: 700,
+                    border: "1px solid var(--border)", background: "transparent",
+                    color: "var(--muted)", cursor: "pointer", flexShrink: 0,
+                  }}
+                >
+                  ✕
+                </button>
+                <button
+                  aria-label={`Confirmar ${p.name}`}
+                  onClick={() => confirmarUm(p.name)}
+                  style={{
+                    width: 32, height: 32, borderRadius: 6, fontSize: 13, fontWeight: 700,
+                    border: "1px solid var(--neon)", background: "var(--neon)",
+                    color: "#000", cursor: "pointer", flexShrink: 0,
+                  }}
+                >
+                  ✓
+                </button>
+              </>
+            )}
           </div>
         );
       })}
