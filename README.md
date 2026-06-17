@@ -31,6 +31,26 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## Sync automático de resultados da Copa
+
+Os placares oficiais podem ser preenchidos automaticamente a partir da
+[football-data.org](https://www.football-data.org/) (plano grátis cobre a
+competição FIFA World Cup, código `WC`).
+
+- **Cron (Vercel):** `vercel.json` agenda `GET /api/sync-results` de hora em hora.
+  No plano Hobby a Vercel executa crons ~1x/dia; o plano Pro respeita o `schedule`.
+- **O que o endpoint faz:** busca os jogos `FINISHED`, casa com os jogos do app
+  (de-para em `lib/results-api.ts`, por código FIFA + reorientação do placar),
+  grava os novos/alterados em `official_results` e recalcula `match_pts` com a
+  mesma regra do admin (`computeMatchPts`). Jogos não-casados voltam em
+  `unmatched` na resposta (úteis para refinar o de-para).
+- **Variáveis de ambiente (Vercel → Project Settings → Environment Variables):**
+  - `FOOTBALL_DATA_API_KEY` — chave grátis da football-data.org (obrigatória)
+  - `NEXT_PUBLIC_SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (ou
+    `NEXT_PUBLIC_SUPABASE_ANON_KEY`) — acesso ao banco
+  - `CRON_SECRET` — recomendada; a Vercel envia `Authorization: Bearer <CRON_SECRET>`
+    e o endpoint recusa chamadas sem esse header quando a variável existe
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
