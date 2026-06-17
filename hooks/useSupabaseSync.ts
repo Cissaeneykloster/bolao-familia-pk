@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import {
   loadParticipantes, loadOfficialResults, loadMatchPts, loadGuesses,
   loadGroupPredictions, backfillGuesses, upsertGroupPredictions,
-  loadMatches, syncAllMatches, loadAdminDeltas,
+  loadMatches, syncAllMatches, seedMissingMatches, loadAdminDeltas,
   loadDailyDraw, insertDailyDraw, loadChallengePts, loadMyChallengeDone,
 } from "@/lib/supabase-sync";
 import { MATCHES } from "@/lib/mock-data";
@@ -69,10 +69,24 @@ export function useSupabaseSync() {
       // do seed local (MATCHES, já com os horários corrigidos)
       const dbMatches = await loadMatches();
       if (dbMatches.length > 0) {
-        setMatches(dbMatches);
+        // Reconcilia: libera para todos os jogos novos do seed que ainda não
+        // estão no banco (mata-mata, rodadas adicionadas etc.). Não sobrescreve
+        // os existentes — preserva edições do admin.
+        const existingIds = new Set(dbMatches.map((m) => m.id));
+        const added = await seedMissingMatches(MATCHES, existingIds);
+        if (added > 0) {
+          console.log(`[SB] matches liberados: +${added} jogo(s)`);
+          setMatches(await loadMatches());
+        } else {
+          setMatches(dbMatches);
+        }
       } else {
         const seeded = await syncAllMatches(MATCHES);
-        if (seeded > 0) console.log(`[SB] matches seed: ${seeded} jogo(s)`);
+        if (seeded > 0) {
+          console.log(`[SB] matches seed: ${seeded} jogo(s)`);
+          const fresh = await loadMatches();
+          if (fresh.length > 0) setMatches(fresh);
+        }
       }
 
       // Carrega participantes

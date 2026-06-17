@@ -10,7 +10,9 @@ vi.mock("@/lib/supabase", () => ({
 
 import {
   upsertGuess, upsertGroupPredictions, backfillGuesses, nowBrasilia,
+  seedMissingMatches,
 } from "@/lib/supabase-sync";
+import type { Match } from "@/lib/types";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -82,6 +84,36 @@ describe("upsertGuess", () => {
 
     upsertSpy.mockResolvedValueOnce({ error: { message: "boom" } } as never);
     expect(await upsertGuess("Ney", "m1", 2, 1)).toBe(false);
+  });
+});
+
+describe("seedMissingMatches", () => {
+  const mk = (id: string): Match => ({
+    id, phase: "grupos", group: "Grupo A", status: "upcoming",
+    a: { name: "BRA", flag: "🇧🇷" }, b: { name: "ARG", flag: "🇦🇷" },
+    kickoff: Date.UTC(2026, 5, 18, 19), label: "18/Jun",
+  });
+
+  it("sobe apenas os jogos do seed que ainda não estão no banco (insert-only)", async () => {
+    const local = [mk("g1"), mk("g2"), mk("g3")];
+    const existing = new Set(["g1"]); // g2 e g3 são novos → liberam
+
+    const count = await seedMissingMatches(local, existing);
+
+    expect(count).toBe(2);
+    expect(fromSpy).toHaveBeenCalledWith("matches");
+    const [rows, opts] = upsertSpy.mock.calls[0] as unknown as [Array<{ id: string; ord: number }>, unknown];
+    expect(rows.map((r) => r.id)).toEqual(["g2", "g3"]);
+    // ord canônico = índice em MATCHES (preserva ordem do seed)
+    expect(rows.map((r) => r.ord)).toEqual([1, 2]);
+    expect(opts).toEqual({ onConflict: "id", ignoreDuplicates: true });
+  });
+
+  it("não chama o Supabase quando o banco já tem todos os jogos", async () => {
+    const local = [mk("g1"), mk("g2")];
+    const count = await seedMissingMatches(local, new Set(["g1", "g2"]));
+    expect(count).toBe(0);
+    expect(upsertSpy).not.toHaveBeenCalled();
   });
 });
 
