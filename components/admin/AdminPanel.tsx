@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { useBolao } from "@/lib/store";
 import { rankWithEff, effPts, mScore, breakdown, bonusPts } from "@/lib/scoring";
-import { MATCHES, ADMINS } from "@/lib/mock-data";
+import { ADMINS } from "@/lib/mock-data";
 import { participantesToPlayers } from "@/lib/players";
 import { useDesafioCats } from "@/lib/useDesafios";
 import {
   upsertParticipante, deleteParticipante, updateParticipanteDb,
   upsertOfficialResult, upsertMatchPtsBatch, syncAllOfficialResults, resetMatchPtsDb,
+  loadAllGuesses, upsertAdminDelta,
 } from "@/lib/supabase-sync";
 
 type AdminTab = "pontos" | "palpites" | "resultados" | "participantes" | "desafios";
@@ -119,19 +120,80 @@ function TabDesafios() {
 
 // ── Aba Pontos ───────────────────────────────────────────────────
 function TabPontos() {
-  const { adminDelta, setAdminDelta, resetAdminDelta, desafios, comboBank, penalty, participantes, adminGrupoId, resetMatchPts, matchPts } = useBolao();
+  const { adminDelta, setAdminDeltas, desafios, comboBank, penalty, participantes, adminGrupoId, resetMatchPts, matchPts, challengePts, recalcAllMatchPts } = useBolao();
+  const [recalcing, setRecalcing] = useState(false);
+  const [recalcMsg, setRecalcMsg] = useState("");
+  const [sortAZ, setSortAZ] = useState(false);
+  const [pending, setPending] = useState<Record<string, number>>({});
   const DESAFIO_CATS = useDesafioCats();
   const bonus = bonusPts(desafios, DESAFIO_CATS, comboBank, penalty);
   const meusPart = participantes.filter((p) => p.grupoId === adminGrupoId && p.ativo);
-  const players = participantesToPlayers(meusPart, adminDelta);
-  const ranked = rankWithEff(players, adminDelta, bonus);
+  const players = participantesToPlayers(meusPart, matchPts, challengePts);
+  // A–Z mantém a linha estável ao clicar +/-; "Pontos" ordena pelo ranking
+  const ranked = sortAZ
+    ? [...players].sort((a, b) => a.name.localeCompare(b.name, "pt"))
+    : rankWithEff(players, adminDelta, bonus);
 
   const totalMatchPts = Object.values(matchPts).reduce((s, v) => s + Math.abs(v), 0);
+  // Ferramentas de ranking (recalcular / zerar) ocultas a pedido
+  const showRankingTools = false;
+
+  // Cancela o ajuste pendente de um participante
+  const cancelarUm = (apelido: string) =>
+    setPending((pd) => { const n = { ...pd }; delete n[apelido]; return n; });
+
+  // Confirma o ajuste pendente de UM participante: grava no Supabase (propaga via Realtime)
+  const confirmarUm = async (apelido: string) => {
+    const change = pending[apelido] ?? 0;
+    if (!change) return;
+    const v = (adminDelta[apelido] ?? 0) + change;
+    setAdminDeltas({ ...adminDelta, [apelido]: v });
+    setPending((pd) => { const n = { ...pd }; delete n[apelido]; return n; });
+    await upsertAdminDelta(apelido, v, adminGrupoId ?? "");
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {/* Botão zerar ranking */}
-      {totalMatchPts > 0 && (
+      {/* Recalcular ranking — oculto a pedido (showRankingTools) */}
+      {showRankingTools && (
+      <div style={{
+        padding: "10px 14px", borderRadius: 10,
+        background: "rgba(0,255,135,0.05)", border: "1px solid rgba(0,255,135,0.2)",
+        display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
+      }}>
+        <div>
+          <p style={{ fontSize: 12, fontWeight: 700, color: "var(--neon)", margin: 0 }}>♻️ Recalcular ranking</p>
+          <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>
+            Refaz os pontos de todos os jogos com os palpites reais do Supabase
+          </p>
+          {recalcMsg && <p style={{ fontSize: 11, color: "var(--neon)", margin: "2px 0 0" }}>{recalcMsg}</p>}
+        </div>
+        <button
+          onClick={async () => {
+            setRecalcing(true);
+            setRecalcMsg("Recalculando...");
+            const allGuesses = await loadAllGuesses();
+            recalcAllMatchPts(participantes, allGuesses);
+            const newPts = useBolao.getState().matchPts;
+            await upsertMatchPtsBatch(newPts);
+            setRecalcMsg("✅ Ranking recalculado e enviado a todos!");
+            setRecalcing(false);
+            setTimeout(() => setRecalcMsg(""), 5000);
+          }}
+          disabled={recalcing}
+          style={{
+            padding: "7px 12px", borderRadius: 7, fontSize: 11, fontWeight: 700,
+            border: "1px solid rgba(0,255,135,0.4)", background: "rgba(0,255,135,0.1)",
+            color: "var(--neon)", cursor: "pointer", whiteSpace: "nowrap",
+          }}
+        >
+          ♻️ Recalcular
+        </button>
+      </div>
+      )}
+
+      {/* Botão zerar ranking — oculto a pedido (showRankingTools) */}
+      {showRankingTools && totalMatchPts > 0 && (
         <div style={{
           padding: "10px 14px", borderRadius: 10,
           background: "rgba(255,90,90,0.06)", border: "1px solid rgba(255,90,90,0.25)",
@@ -161,9 +223,34 @@ function TabPontos() {
         </div>
       )}
 
+      {/* Ordenação */}
+      <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "2px 2px 4px" }}>
+        <span style={{ fontSize: 11, color: "var(--muted)", marginRight: 2 }}>Ordenar:</span>
+        {([
+          { az: false, label: "🏆 Pontos" },
+          { az: true,  label: "🔤 A–Z" },
+        ] as const).map((opt) => (
+          <button
+            key={opt.label}
+            onClick={() => setSortAZ(opt.az)}
+            style={{
+              padding: "4px 10px", borderRadius: 7, fontSize: 11, fontWeight: 700,
+              border: `1px solid ${sortAZ === opt.az ? "var(--neon)" : "var(--border)"}`,
+              background: sortAZ === opt.az ? "var(--neon-soft)" : "transparent",
+              color: sortAZ === opt.az ? "var(--neon)" : "var(--muted)",
+              cursor: "pointer",
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
       {ranked.map((p) => {
-        const pts = effPts(p, adminDelta, bonus);
-        const delta = adminDelta[p.name] ?? 0;
+        const confirmed = adminDelta[p.name] ?? 0;
+        const pend = pending[p.name] ?? 0;
+        const eff = confirmed + pend;
+        const pts = effPts(p, { ...adminDelta, [p.name]: eff }, bonus);
         return (
           <div
             key={p.name}
@@ -185,10 +272,13 @@ function TabPontos() {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{p.name}</span>
-              {delta !== 0 && (
-                <span style={{ fontSize: 11, color: delta > 0 ? "var(--ok)" : "var(--danger)", marginLeft: 6 }}>
-                  ({delta > 0 ? "+" : ""}{delta})
+              {eff !== 0 && (
+                <span style={{ fontSize: 11, color: eff > 0 ? "var(--ok)" : "var(--danger)", marginLeft: 6 }}>
+                  ({eff > 0 ? "+" : ""}{eff})
                 </span>
+              )}
+              {pend !== 0 && (
+                <span style={{ fontSize: 10, color: "var(--warn)", marginLeft: 6 }}>pendente</span>
               )}
             </div>
             <span className="font-bebas" style={{ fontSize: 20, color: "var(--text)" }}>{pts}</span>
@@ -198,7 +288,7 @@ function TabPontos() {
               <button
                 key={d}
                 aria-label={`${p.name} ${d > 0 ? "+" : ""}${d}`}
-                onClick={() => setAdminDelta(p.name, d)}
+                onClick={() => setPending((pd) => ({ ...pd, [p.name]: (pd[p.name] ?? 0) + d }))}
                 style={{
                   width: 32, height: 32, borderRadius: 6, fontSize: 11, fontWeight: 700,
                   border: `1px solid ${d > 0 ? "rgba(0,255,135,0.3)" : "rgba(255,90,90,0.3)"}`,
@@ -211,19 +301,32 @@ function TabPontos() {
               </button>
             ))}
 
-            {/* Reset */}
-            {delta !== 0 && (
-              <button
-                aria-label={`Resetar ${p.name}`}
-                onClick={() => resetAdminDelta(p.name)}
-                style={{
-                  width: 28, height: 28, borderRadius: 6, fontSize: 14,
-                  border: "1px solid var(--border)", background: "transparent",
-                  color: "var(--muted)", cursor: "pointer", flexShrink: 0,
-                }}
-              >
-                ↺
-              </button>
+            {/* Cancelar / Confirmar — só aparecem se houver mudança pendente */}
+            {pend !== 0 && (
+              <>
+                <button
+                  aria-label={`Cancelar ${p.name}`}
+                  onClick={() => cancelarUm(p.name)}
+                  style={{
+                    width: 32, height: 32, borderRadius: 6, fontSize: 13, fontWeight: 700,
+                    border: "1px solid var(--border)", background: "transparent",
+                    color: "var(--muted)", cursor: "pointer", flexShrink: 0,
+                  }}
+                >
+                  ✕
+                </button>
+                <button
+                  aria-label={`Confirmar ${p.name}`}
+                  onClick={() => confirmarUm(p.name)}
+                  style={{
+                    width: 32, height: 32, borderRadius: 6, fontSize: 13, fontWeight: 700,
+                    border: "1px solid var(--neon)", background: "var(--neon)",
+                    color: "#000", cursor: "pointer", flexShrink: 0,
+                  }}
+                >
+                  ✓
+                </button>
+              </>
             )}
           </div>
         );
@@ -234,13 +337,13 @@ function TabPontos() {
 
 // ── Aba Palpites ─────────────────────────────────────────────────
 function TabPalpites() {
-  const { participantes, adminGrupoId, guesses, officialResults } = useBolao();
+  const { participantes, adminGrupoId, guesses, officialResults, matches } = useBolao();
   const meusPart = participantes.filter(
     (p) => (p.grupoId === adminGrupoId || !p.grupoId) && p.ativo
   );
 
   // Jogos com resultado oficial já lançado
-  const jogosComResultado = MATCHES.filter(
+  const jogosComResultado = matches.filter(
     (m) => !m.training && officialResults[m.id]
   ).sort((a, b) => (a.kickoff ?? 0) - (b.kickoff ?? 0));
 
@@ -290,7 +393,7 @@ function TabPalpites() {
                     </span>
                   ) : (
                     <span style={{ fontSize: 12, color: "var(--danger)", fontStyle: "italic" }}>
-                      sem palpite (−3)
+                      sem palpite
                     </span>
                   )}
                 </div>
@@ -305,17 +408,17 @@ function TabPalpites() {
 
 // ── Aba Resultados ───────────────────────────────────────────────
 function TabResultados() {
-  const { resultFix, setResultFix, saveResultAndCalcPts, addFeedEvent, participantes, adminGrupoId, guesses, officialResults } = useBolao();
+  const { resultFix, setResultFix, saveResultAndCalcPts, recalcAllMatchPts, addFeedEvent, participantes, adminGrupoId, officialResults, matches } = useBolao();
   const [drafts, setDrafts] = useState<Record<string, { sa: number; sb: number }>>({});
   const [saved, setSaved] = useState<string | null>(null);
   const [syncingResults, setSyncingResults] = useState(false);
   const [syncResultMsg, setSyncResultMsg] = useState("");
   // TODOS os jogos ordenados por data (incluindo treinos)
-  const allMatches = [...MATCHES]
+  const allMatches = [...matches]
     .sort((a, b) => (a.kickoff ?? 0) - (b.kickoff ?? 0));
 
   const setDraft = (id: string, side: "sa" | "sb", dir: 1 | -1) => {
-    const m = MATCHES.find((x) => x.id === id)!;
+    const m = matches.find((x) => x.id === id)!;
     const prev = drafts[id] ?? { sa: m.sa ?? 0, sb: m.sb ?? 0 };
     const next = Math.min(20, Math.max(0, prev[side] + dir));
     setDrafts((d) => ({ ...d, [id]: { ...prev, [side]: next } }));
@@ -361,8 +464,10 @@ function TabResultados() {
       </div>
 
       <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
-        Informe o resultado de cada jogo. O sistema calculará os pontos automaticamente.
-        Participantes sem palpite recebem <strong style={{ color: "var(--danger)" }}>−3 pts</strong>.
+        Informe o resultado de cada jogo. O sistema calcula os pontos automaticamente.
+        Ausência: 2 jogos seguidos sem palpite são carência; do{" "}
+        <strong style={{ color: "var(--danger)" }}>3º consecutivo</strong> em diante,{" "}
+        <strong style={{ color: "var(--danger)" }}>−3 pts</strong> por jogo (palpitar zera a carência).
       </p>
       {allMatches.map((m) => {
         const official = officialResults[m.id];
@@ -410,7 +515,11 @@ function TabResultados() {
               <button
                 aria-label={isOfficial ? `Alterar resultado ${m.id}` : `Salvar resultado ${m.id}`}
                 onClick={async () => {
-                  saveResultAndCalcPts(m.id, draft, participantes, adminGrupoId ?? "", guesses, m.phase, !!m.training);
+                  // Palpites reais deste jogo, de todos os participantes (Supabase)
+                  const allGuesses = await loadAllGuesses();
+                  saveResultAndCalcPts(m.id, draft, participantes, adminGrupoId ?? "", allGuesses[m.id] ?? {}, m.phase, !!m.training);
+                  // Recalcula TODOS os pontos com a regra de ausência sequencial (carência de 2)
+                  if (!m.training) recalcAllMatchPts(participantes, allGuesses);
                   // Grava no Supabase (em background)
                   upsertOfficialResult(m.id, draft.sa, draft.sb);
                   // Depois que o store recalculou, sincroniza os pontos

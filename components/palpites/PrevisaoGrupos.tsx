@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useBolao } from "@/lib/store";
-import { GROUPS, MATCHES } from "@/lib/mock-data";
+import { GROUPS } from "@/lib/mock-data";
 import { arePredictionsLocked, calcGroupPredictionPts } from "@/lib/standings";
 import { useToast } from "@/components/shell/Toast";
 import { useConfetti } from "@/components/shell/ConfettiCanvas";
@@ -55,7 +55,7 @@ export function PrevisaoGrupos() {
   const {
     groupPredictions, setGroupPrediction,
     groupPredictionsSaved, saveGroupPredictions,
-    resultFix,
+    resultFix, matches,
   } = useBolao();
   const { show } = useToast();
   const { fire } = useConfetti();
@@ -70,14 +70,14 @@ export function PrevisaoGrupos() {
 
   // Calcula pontos acumulados com os resultados já disponíveis
   const { total: ptsTotais, details } = calcGroupPredictionPts(
-    groupPredictions, GROUPS, MATCHES, resultFix
+    groupPredictions, GROUPS, matches, resultFix
   );
 
   const handleSave = () => {
     if (!tudo) { show("⚠️ Preencha todos os 12 grupos antes de salvar."); return; }
     saveGroupPredictions();
     fire();
-    show("🔒 Previsões salvas e travadas!");
+    show("✅ Previsões salvas! Você ainda pode editar até o prazo.");
   };
 
   return (
@@ -133,7 +133,7 @@ export function PrevisaoGrupos() {
           background: "var(--bg-2)", border: "1px solid var(--border)", lineHeight: 1.5,
         }}>
           ⚠️ <strong style={{ color: "var(--text)" }}>Preencha todos os 12 grupos</strong> e clique em
-          "Salvar Previsões". Após salvar (ou quando o 1º jogo começar), não pode mais alterar.
+          "Salvar Previsões". Dá pra editar à vontade até o prazo final.
         </div>
       )}
 
@@ -236,7 +236,7 @@ export function PrevisaoGrupos() {
           }}
         >
           {tudo
-            ? "🔒 Salvar e Travar Previsões"
+            ? "💾 Salvar Previsões"
             : `Preencha mais ${totalGrupos - preenchidos} grupo(s)`}
         </button>
       )}

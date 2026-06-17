@@ -1,3 +1,5 @@
+⚽ **Bolão Família PK** — bolão da Copa do Mundo 2026 para grupos de família e amigos: palpites nos jogos, previsão dos classificados, desafios diários e ranking ao vivo. Construído com Next.js + Supabase.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

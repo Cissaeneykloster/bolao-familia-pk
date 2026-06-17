@@ -1,14 +1,16 @@
 /**
  * Converte os Participantes cadastrados pelo admin em Players para o ranking.
- * Pontos = matchPts (partidas) + adminDelta (ajuste manual)
+ * Pontos base = matchPts (partidas). O ajuste manual do admin (adminDelta) é
+ * aplicado uma única vez em effPts/rankWithEff — NÃO deve ser somado aqui,
+ * senão fica contado em dobro.
  */
 import type { Player } from "./types";
 import type { Participante } from "./mock-data";
 
 export function participantesToPlayers(
   participantes: Participante[],
-  adminDelta: Record<string, number>,
-  matchPts: Record<string, number> = {}
+  matchPts: Record<string, number> = {},
+  challengePts: Record<string, number> = {}
 ): Player[] {
   return participantes
     .filter((p) => p.ativo)
@@ -20,8 +22,8 @@ export function participantesToPlayers(
         .toUpperCase()
         .slice(0, 2);
 
-      // Total = pontos das partidas + ajuste manual do admin
-      const pts = (matchPts[p.apelido] ?? 0) + (adminDelta[p.apelido] ?? 0);
+      // Base = pontos das partidas + pontos de desafios (adminDelta vai em effPts)
+      const pts = (matchPts[p.apelido] ?? 0) + (challengePts[p.apelido] ?? 0);
 
       return {
         name: p.apelido,

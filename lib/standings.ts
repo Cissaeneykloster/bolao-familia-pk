@@ -4,13 +4,37 @@
  */
 import type { Match, GroupTeam, Group } from "./types";
 import { mScore } from "./scoring";
+import { EXTRA_MS_AFTER_KICKOFF } from "./mock-data";
 
-/** Timestamp do kickoff do primeiro jogo da Copa (trava das previsões) */
+/** Timestamp do kickoff do primeiro jogo da Copa */
 export const COPA_FIRST_KICKOFF_MS = new Date("2026-06-11T19:00:00Z").getTime(); // 11/Jun 16h BRT = 19h UTC
 
-/** Verifica se as previsões dos grupos estão travadas */
-export function arePredictionsLocked(saved: boolean, now = Date.now()): boolean {
-  return saved || now >= COPA_FIRST_KICKOFF_MS;
+/**
+ * Prazo final para enviar/editar a Previsão dos Grupos.
+ * Estendido para +10 dias após o kickoff original, dando mais tempo ao pessoal palpitar.
+ */
+export const GROUP_PREDICTIONS_DEADLINE_MS =
+  COPA_FIRST_KICKOFF_MS + 10 * 24 * 60 * 60 * 1000; // 21/Jun 16h BRT
+
+/**
+ * Verifica se as previsões dos grupos estão travadas.
+ * Até o prazo (GROUP_PREDICTIONS_DEADLINE_MS) TODOS podem editar — inclusive
+ * quem já preencheu/salvou. Só trava de fato quando o prazo encerra.
+ */
+export function arePredictionsLocked(_saved: boolean, now = Date.now()): boolean {
+  return now >= GROUP_PREDICTIONS_DEADLINE_MS;
+}
+
+/**
+ * Palpite travado: a partida já começou (kickoff + tolerância de 5 min).
+ * Treinos nunca travam por horário; jogo sem kickoff não trava.
+ */
+export function isMatchLocked(
+  match: Pick<Match, "kickoff" | "training">,
+  now = Date.now(),
+): boolean {
+  if (match.training || !match.kickoff) return false;
+  return now >= match.kickoff + EXTRA_MS_AFTER_KICKOFF;
 }
 
 /** Pontos ganhos com as previsões de grupos (10 pts por classificado acertado) */
@@ -34,7 +58,7 @@ export function calcGroupPredictionPts(
     const groupMatches = allMatches.filter(
       (m) => m.group === group.name && m.phase === "grupos"
     );
-    const encerrados = groupMatches.filter((m) => m.status === "finished").length;
+    const encerrados = groupMatches.filter((m) => !!resultFix[m.id]).length;
 
     // Só calcula se ao menos 1 jogo foi encerrado
     if (encerrados === 0) {
@@ -70,9 +94,9 @@ export function calcGroupStandings(
     stats[team.name] = { ...team, j: 0, v: 0, e: 0, d: 0, sg: 0, pts: 0 };
   }
 
-  // Filtra apenas os jogos deste grupo que já foram encerrados
+  // "Encerrado" = tem resultado oficial lançado (o status do jogo não muda sozinho)
   const groupMatches = allMatches.filter(
-    (m) => m.group === group.name && m.phase === "grupos" && m.status === "finished"
+    (m) => m.group === group.name && m.phase === "grupos" && !!resultFix[m.id]
   );
 
   for (const match of groupMatches) {

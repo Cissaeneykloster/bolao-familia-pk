@@ -2,10 +2,14 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Draw, ChallengeRecord, FeedEvent } from "./types";
+import type { Draw, ChallengeRecord, FeedEvent, Match } from "./types";
 import type { Participante } from "./mock-data";
 import type { DesafioCat } from "./types";
-import { DESAFIO_CATS as DEFAULT_CATS } from "./mock-data";
+import { DESAFIO_CATS as DEFAULT_CATS, MATCHES } from "./mock-data";
+import { upsertGuess, upsertGroupPredictions } from "./supabase-sync";
+import type { DailyDraw } from "./supabase-sync";
+import { breakdown, computeMatchPts, PENALTY_START_MS } from "./scoring";
+import { isMatchLocked, arePredictionsLocked } from "./standings";
 
 // ── Tipos do estado ───────────────────────────────────────────────
 
@@ -68,6 +72,14 @@ interface BolaoState {
   // Resultados oficiais lançados pelo admin — congela o jogo para todos
   officialResults: Record<string, { sa: number; sb: number }>;
 
+  // Jogos (fonte de verdade = Supabase; inicia com o seed MATCHES p/ SSR/offline)
+  matches: Match[];
+
+  // Desafio diário (sorteado pelo sistema, propagado por grupo)
+  dailyDraw: DailyDraw | null;
+  myChallengeDone: boolean | null;        // estado do usuário atual hoje (null = não marcou)
+  challengePts: Record<string, number>;   // apelido → total de pontos de desafios
+
   // Dados compartilhados
   adminDelta: Record<string, number>;
   betFix: Record<string, { a: number; b: number }>;
@@ -93,6 +105,10 @@ interface BolaoState {
 
   // Sincronização Supabase → store
   setParticipantes: (p: Participante[]) => void;
+  setMatches: (m: Match[]) => void;
+  setDailyDraw: (d: DailyDraw | null) => void;
+  setMyChallengeDone: (v: boolean | null) => void;
+  setChallengePts: (m: Record<string, number>) => void;
   setOfficialResults: (r: Record<string, { sa: number; sb: number }>) => void;
   setMatchPts: (pts: Record<string, number>) => void;
   mergeGuesses: (g: Record<string, { a: number; b: number }>) => void;
@@ -100,6 +116,10 @@ interface BolaoState {
   // Previsão dos grupos
   setGroupPrediction: (group: string, first: string, second: string) => void;
   saveGroupPredictions: () => void;
+  mergeGroupPredictions: (
+    preds: Record<string, { first: string; second: string }>,
+    saved: boolean,
+  ) => void;
 
   // Feed
   addFeedEvent: (event: Omit<FeedEvent, "id" | "timestamp">) => void;
@@ -127,20 +147,28 @@ interface BolaoState {
   setAdminUnlocked: (v: boolean) => void;
   setAdminGrupo: (grupoId: string | null) => void;
   setAdminDelta: (name: string, delta: number) => void;
+  setAdminDeltas: (m: Record<string, number>) => void;
   resetAdminDelta: (name: string) => void;
   setBetFix: (id: string, score: { a: number; b: number }) => void;
   // Salva resultado E recalcula pontos (exceto treinos — não contam para ranking)
+  // matchGuesses: palpites DESTE jogo por apelido (loadAllGuesses(...)[matchId])
   saveResultAndCalcPts: (
     matchId: string,
     score: { sa: number; sb: number },
     participantes: import("./mock-data").Participante[],
     grupoId: string,
-    guesses: Record<string, { a: number; b: number }>,
+    matchGuesses: Record<string, { a: number; b: number }>,
     matchPhase: import("./types").MatchPhase,
     isTraining?: boolean,
   ) => void;
   // Zera todos os pontos de partidas
   resetMatchPts: () => void;
+  // Reconstrói TODOS os pontos a partir dos resultados oficiais + palpites
+  // reais (loadAllGuesses). Idempotente — seguro clicar quantas vezes quiser.
+  recalcAllMatchPts: (
+    participantes: import("./mock-data").Participante[],
+    allGuesses: Record<string, Record<string, { a: number; b: number }>>,
+  ) => void;
   setResultFix: (id: string, score: { sa: number; sb: number }) => void;
 
   // Participantes — scoped por grupo
@@ -168,6 +196,10 @@ const initialState = {
   currentUserApelido: null as string | null,
 
   desafioCatsByGroup: {},
+  matches: MATCHES,
+  dailyDraw: null as DailyDraw | null,
+  myChallengeDone: null as boolean | null,
+  challengePts: {},
   matchPts: {},
   officialResults: {},
   feedEvents: [],
@@ -199,7 +231,7 @@ const initialState = {
 
 export const useBolao = create<BolaoState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...initialState,
 
       setStyle: (group, val) => set({ [group]: val }),
@@ -219,7 +251,17 @@ export const useBolao = create<BolaoState>()(
         }),
 
       saveGuess: (id) => {
-        void id;
+        // Partida iniciada → palpite não pode mais ser salvo (regra do bolão)
+        const match = get().matches.find((m) => m.id === id);
+        if (match && isMatchLocked(match)) return;
+
+        const { currentUserApelido, guesses } = get();
+        const g = guesses[id];
+        // Persiste no Supabase quando o participante está identificado;
+        // sem identificação o palpite fica apenas neste dispositivo
+        if (currentUserApelido && g) {
+          void upsertGuess(currentUserApelido, id, g.a, g.b);
+        }
         set((state) => ({ guesses: { ...state.guesses } }));
       },
 
@@ -298,23 +340,60 @@ export const useBolao = create<BolaoState>()(
 
       // Supabase sync setters
       setParticipantes: (p) => set({ participantes: p }),
-      setOfficialResults: (r) => set({ officialResults: r }),
+      setMatches: (m) => set({ matches: m }),
+      setDailyDraw: (d) => set({ dailyDraw: d }),
+      setMyChallengeDone: (v) => set({ myChallengeDone: v }),
+      setChallengePts: (m) => set({ challengePts: m }),
+      // Resultados oficiais (servidor autoritativo) também alimentam resultFix,
+      // que é o que a aba Grupos e os pontos de previsão usam para calcular.
+      setOfficialResults: (r) =>
+        set((s) => ({ officialResults: r, resultFix: { ...s.resultFix, ...r } })),
       setMatchPts: (pts) => set({ matchPts: pts }),
-      mergeGuesses: (g) => set((s) => ({ guesses: { ...s.guesses, ...g } })),
+      mergeGuesses: (g) =>
+        set((s) => {
+          // Servidor vence em jogos travados (resultado oficial lançado);
+          // local vence onde há rascunho ainda não sincronizado
+          const merged = { ...s.guesses };
+          for (const [id, guess] of Object.entries(g)) {
+            if (s.officialResults[id] || !merged[id]) merged[id] = guess;
+          }
+          return { guesses: merged };
+        }),
 
       setGroupPrediction: (group, first, second) =>
         set((s) => {
-          if (s.groupPredictionsSaved) return {}; // já travado
+          // Até o prazo, todos podem editar (mesmo já tendo salvo)
+          if (arePredictionsLocked(s.groupPredictionsSaved)) return {};
           return {
             groupPredictions: { ...s.groupPredictions, [group]: { first, second } },
           };
         }),
 
-      saveGroupPredictions: () =>
-        set(() => ({
+      saveGroupPredictions: () => {
+        const { currentUserApelido, groupPredictions } = get();
+        if (currentUserApelido) {
+          void upsertGroupPredictions(currentUserApelido, groupPredictions, true);
+        }
+        set({
           groupPredictionsSaved: true,
           groupPredictionsSavedAt: Date.now(),
-        })),
+        });
+      },
+
+      mergeGroupPredictions: (preds, saved) =>
+        set((s) => {
+          // Previsões travadas no servidor são autoritativas;
+          // rascunhos locais vencem enquanto não houver trava
+          if (saved) {
+            return {
+              groupPredictions: preds,
+              groupPredictionsSaved: true,
+              groupPredictionsSavedAt: s.groupPredictionsSavedAt ?? Date.now(),
+            };
+          }
+          if (s.groupPredictionsSaved) return {};
+          return { groupPredictions: { ...preds, ...s.groupPredictions } };
+        }),
 
       addFeedEvent: (event) =>
         set((s) => ({
@@ -364,6 +443,9 @@ export const useBolao = create<BolaoState>()(
           adminDelta: { ...state.adminDelta, [name]: (state.adminDelta[name] ?? 0) + delta },
         })),
 
+      // Substitui todo o mapa (usado ao carregar do Supabase)
+      setAdminDeltas: (m) => set({ adminDelta: m }),
+
       resetAdminDelta: (name) =>
         set((state) => {
           const next = { ...state.adminDelta };
@@ -376,7 +458,18 @@ export const useBolao = create<BolaoState>()(
 
       resetMatchPts: () => set({ matchPts: {} }),
 
-      saveResultAndCalcPts: (matchId, score, participantes, _grupoId, guesses, matchPhase, isTraining = false) =>
+      recalcAllMatchPts: (participantes, allGuesses) =>
+        set((state) => ({
+          matchPts: computeMatchPts(
+            participantes.filter((p) => p.ativo),
+            state.officialResults,
+            allGuesses,
+            state.matches,
+            PENALTY_START_MS,
+          ),
+        })),
+
+      saveResultAndCalcPts: (matchId, score, participantes, _grupoId, matchGuesses, matchPhase, isTraining = false) =>
         set((state) => {
           // Treinos NÃO calculam pontos — só salvam o resultado oficial
           if (isTraining) {
@@ -386,39 +479,23 @@ export const useBolao = create<BolaoState>()(
             };
           }
 
-          const { breakdown: bkd } = require("./scoring");
           const ativos = participantes.filter((p) => p.ativo);
+
+          // Pontos de um participante para um placar: palpite real de cada
+          // um (vindo do Supabase via loadAllGuesses); sem palpite = -3
+          const ptsDe = (apelido: string, sc: { sa: number; sb: number }): number => {
+            const g = matchGuesses[apelido];
+            return g ? breakdown(sc, { a: g.a, b: g.b }, matchPhase).total : -3;
+          };
 
           // Se já existe resultado anterior, estorna os pontos antigos antes de recalcular
           const newMatchPts = { ...state.matchPts };
           const prevScore = state.officialResults[matchId];
 
-          if (prevScore) {
-            // Estorna pontos do resultado anterior
-            for (const part of ativos) {
-              const g = state.guesses[matchId] ?? guesses[matchId];
-              let oldPts: number;
-              if (g) {
-                const bd = bkd({ sa: prevScore.sa, sb: prevScore.sb }, { a: g.a, b: g.b }, matchPhase);
-                oldPts = bd.total;
-              } else {
-                oldPts = -3;
-              }
-              newMatchPts[part.apelido] = (newMatchPts[part.apelido] ?? 0) - oldPts;
-            }
-          }
-
-          // Calcula e aplica pontos do novo resultado
           for (const part of ativos) {
-            const g = state.guesses[matchId] ?? guesses[matchId];
-            let pts: number;
-            if (g) {
-              const bd = bkd({ sa: score.sa, sb: score.sb }, { a: g.a, b: g.b }, matchPhase);
-              pts = bd.total;
-            } else {
-              pts = -3;
-            }
-            newMatchPts[part.apelido] = (newMatchPts[part.apelido] ?? 0) + pts;
+            const estorno = prevScore ? ptsDe(part.apelido, prevScore) : 0;
+            newMatchPts[part.apelido] =
+              (newMatchPts[part.apelido] ?? 0) - estorno + ptsDe(part.apelido, score);
           }
 
           return {
@@ -476,8 +553,9 @@ export const useBolao = create<BolaoState>()(
       name: "bolao2026:v1",
       // adminUnlocked e adminGrupoId NÃO são persistidos (sessão)
       partialize: (state) => {
+        // dados de servidor (matches/desafio diário) não são persistidos — vêm sempre fresh
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { adminUnlocked, adminGrupoId, ...rest } = state;
+        const { adminUnlocked, adminGrupoId, matches, dailyDraw, myChallengeDone, challengePts, ...rest } = state;
         return rest;
       },
     }

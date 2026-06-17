@@ -3,15 +3,11 @@
 import { useState } from "react";
 import type { Group, GroupTeam } from "@/lib/types";
 import { useBolao } from "@/lib/store";
-import { MATCHES } from "@/lib/mock-data";
 import { calcGroupStandings } from "@/lib/standings";
-import { useLang, T, countryName } from "@/lib/useLang";
 
 // ── Sub-componente: sua previsão de classificação ──────────────────
 function SuaPrevisao({ groupName, standings }: { groupName: string; standings: GroupTeam[] }) {
   const { groupPredictions, groupPredictionsSaved } = useBolao();
-  const lang = useLang();
-  const t = T[lang];
   const pred = groupPredictions[groupName];
   if (!pred?.first && !pred?.second) return null;
 
@@ -21,7 +17,7 @@ function SuaPrevisao({ groupName, standings }: { groupName: string; standings: G
   return (
     <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10 }}>
       <p style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
-        {t.suaPrevisao}
+        Sua previsão de classificação
       </p>
       {[
         { label: "🥇 1º", name: pred.first },
@@ -31,19 +27,19 @@ function SuaPrevisao({ groupName, standings }: { groupName: string; standings: G
         const errou = jogosEncerrados && !classified.includes(name) && classified.length === 2;
         return (
           <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, marginBottom: 4 }}>
-            <span style={{ color: "var(--text)" }}>{label} — {countryName(name, lang) || "—"}</span>
+            <span style={{ color: "var(--text)" }}>{label} — {name || "—"}</span>
             {acertou
               ? <span style={{ color: "var(--ok)", fontWeight: 700 }}>✅ +10 pts</span>
               : errou
               ? <span style={{ color: "var(--danger)" }}>❌ +0</span>
-              : <span style={{ color: "var(--muted)" }}>{t.emAberto}</span>
+              : <span style={{ color: "var(--muted)" }}>⏳ em aberto</span>
             }
           </div>
         );
       })}
       {!groupPredictionsSaved && (
         <p style={{ fontSize: 11, color: "var(--warn)", marginTop: 4, fontStyle: "italic" }}>
-          {t.previsaoNaoTravada}
+          ⚠️ Previsão ainda não travada — vá em Palpites para salvar.
         </p>
       )}
     </div>
@@ -56,16 +52,14 @@ interface GrupoTabelaProps {
 
 export function GrupoTabela({ group }: GrupoTabelaProps) {
   const [open, setOpen] = useState(false);
-  const { resultFix } = useBolao();
-  const lang = useLang();
-  const t = T[lang];
+  const { resultFix, matches } = useBolao();
 
   // Classificação calculada dinamicamente a partir dos resultados reais
-  const standings = calcGroupStandings(group, MATCHES, resultFix);
-  const jogosEncerrados = MATCHES.filter(
+  const standings = calcGroupStandings(group, matches, resultFix);
+  const jogosEncerrados = matches.filter(
     (m) => m.group === group.name && m.phase === "grupos" && m.status === "finished"
   ).length;
-  const totalJogos = MATCHES.filter(
+  const totalJogos = matches.filter(
     (m) => m.group === group.name && m.phase === "grupos"
   ).length;
 
@@ -99,7 +93,7 @@ export function GrupoTabela({ group }: GrupoTabelaProps) {
             {group.name}
           </span>
           <p style={{ fontSize: 10, color: "var(--muted)", margin: 0 }}>
-            {jogosEncerrados > 0 ? t.jogosRealizados(jogosEncerrados, totalJogos) : t.aguardandoInicio}
+            {jogosEncerrados > 0 ? `${jogosEncerrados}/${totalJogos} jogos realizados` : "Aguardando início"}
           </p>
         </div>
         <span style={{ color: "var(--muted)", fontSize: 16, transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>
@@ -113,7 +107,7 @@ export function GrupoTabela({ group }: GrupoTabelaProps) {
           <thead>
             <tr style={{ background: "var(--bg-2)" }}>
               <th style={{ padding: "6px 16px", textAlign: "left", color: "var(--muted)", fontWeight: 600, fontSize: 11 }}>#</th>
-              <th style={{ padding: "6px 8px", textAlign: "left", color: "var(--muted)", fontWeight: 600, fontSize: 11 }}>{t.team}</th>
+              <th style={{ padding: "6px 8px", textAlign: "left", color: "var(--muted)", fontWeight: 600, fontSize: 11 }}>Time</th>
               <th style={{ padding: "6px 8px", textAlign: "center", color: "var(--muted)", fontWeight: 600, fontSize: 11 }}>J</th>
               <th style={{ padding: "6px 8px", textAlign: "center", color: "var(--muted)", fontWeight: 600, fontSize: 11 }}>V</th>
               {/* E e D ocultos no mobile via classe */}
@@ -142,7 +136,7 @@ export function GrupoTabela({ group }: GrupoTabelaProps) {
                   </td>
                   <td style={{ padding: "8px 8px", whiteSpace: "nowrap" }}>
                     <span style={{ marginRight: 6 }}>{team.flag}</span>
-                    <span style={{ color: "var(--text)", fontWeight: 500 }}>{countryName(team.name, lang)}</span>
+                    <span style={{ color: "var(--text)", fontWeight: 500 }}>{team.name}</span>
                   </td>
                   <td style={{ padding: "8px 8px", textAlign: "center", color: "var(--muted)" }}>{team.j}</td>
                   <td style={{ padding: "8px 8px", textAlign: "center", color: "var(--ok)" }}>{team.v}</td>
@@ -182,7 +176,7 @@ export function GrupoTabela({ group }: GrupoTabelaProps) {
           {group.games.length > 0 && (
             <div>
               <p style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                {lang === "en" ? "Matches" : "Jogos"}
+                Jogos
               </p>
               {group.games.map((g, i) => (
                 <p key={i} style={{ fontSize: 13, color: "var(--text)", marginBottom: 3 }}>⚽ {g.t}</p>

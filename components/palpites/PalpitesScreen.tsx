@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useBolao } from "@/lib/store";
 import { mScore } from "@/lib/scoring";
-import { MATCHES, GROUPS } from "@/lib/mock-data";
+import { GROUPS } from "@/lib/mock-data";
 import { PlacarInput } from "./PlacarInput";
 import { Breakdown } from "./Breakdown";
 import { PrevisaoGrupos } from "./PrevisaoGrupos";
@@ -15,14 +15,14 @@ import { useLang, T, countryName } from "@/lib/useLang";
 type Tab = "grupos" | "jogos";
 
 export function PalpitesScreen() {
-  const { guesses, resultFix, groupPredictions, groupPredictionsSaved, addFeedEvent, officialResults, focusMatchId, setFocusMatch } = useBolao();
+  const { guesses, resultFix, groupPredictions, groupPredictionsSaved, addFeedEvent, officialResults, currentUserApelido, matches, focusMatchId, setFocusMatch } = useBolao();
   const { show } = useToast();
   const { fire } = useConfetti();
   const lang = useLang();
   const t = T[lang];
 
   const predLocked = arePredictionsLocked(groupPredictionsSaved);
-  const { total: ptsPrev } = calcGroupPredictionPts(groupPredictions, GROUPS, MATCHES, resultFix);
+  const { total: ptsPrev } = calcGroupPredictionPts(groupPredictions, GROUPS, matches, resultFix);
 
   // Decide qual aba mostrar por padrão; se vier de "Palpite" de um jogo, vai direto para jogos
   const [tab, setTab] = useState<Tab>(focusMatchId || predLocked ? "jogos" : "grupos");
@@ -57,7 +57,7 @@ export function PalpitesScreen() {
   }, [focusMatchId, setFocusMatch]);
 
   // Conta palpites dos jogos
-  const copaMatches = MATCHES.filter((m) => m.phase !== "amistoso");
+  const copaMatches = matches.filter((m) => m.phase !== "amistoso");
   const apostados = copaMatches.filter((m) => guesses[m.id]).length;
   const pct = copaMatches.length > 0 ? Math.round((apostados / copaMatches.length) * 100) : 0;
 
@@ -70,7 +70,7 @@ export function PalpitesScreen() {
   const handleSaved = (matchId: string) => {
     show(t.palpiteSalvo);
     const g = guesses[matchId];
-    const match = MATCHES.find((m) => m.id === matchId);
+    const match = matches.find((m) => m.id === matchId);
     if (g && match) {
       addFeedEvent({
         type: "sent",
@@ -93,13 +93,25 @@ export function PalpitesScreen() {
   };
 
   // Todos ordenados por data/hora
-  const sortedMatches = [...MATCHES].sort((a, b) => (a.kickoff ?? 0) - (b.kickoff ?? 0));
+  const sortedMatches = [...matches].sort((a, b) => (a.kickoff ?? 0) - (b.kickoff ?? 0));
   const upcoming = sortedMatches.filter((m) => m.status === "upcoming" && !m.training);
   const training = sortedMatches.filter((m) => m.training);
   const finished = sortedMatches.filter((m) => m.status === "finished" && !m.training);
 
   return (
     <div className="animate-screen-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+      {/* ── Aviso: sem identificação, palpites não vão para o servidor ── */}
+      {!currentUserApelido && (
+        <div style={{
+          padding: "10px 14px", borderRadius: "var(--radius)",
+          background: "rgba(255,216,77,0.08)", border: "1px solid rgba(255,216,77,0.35)",
+          fontSize: 12, color: "var(--warn)",
+        }}>
+          ⚠️ Você não está identificado — seus palpites ficam salvos só neste
+          aparelho. Abra o app pelo seu link de acesso para salvá-los na nuvem.
+        </div>
+      )}
 
       {/* ── Tabs ── */}
       <div style={{ display: "flex", gap: 8 }}>
@@ -132,7 +144,7 @@ export function PalpitesScreen() {
 
         <button
           onClick={() => {
-            if (!predLocked && previsoes < 12) {
+            if (!predLocked && previsoes < 12 && !bypassGate) {
               show(t.salvePrevisoesPrimeiro);
               return;
             }
@@ -142,8 +154,8 @@ export function PalpitesScreen() {
             flex: 1, padding: "10px 0", borderRadius: 10, fontWeight: 700, fontSize: 13,
             border: `1px solid ${tab === "jogos" ? "var(--neon)" : "var(--border)"}`,
             background: tab === "jogos" ? "var(--neon-soft)" : "transparent",
-            color: tab === "jogos" ? "var(--neon)" : (!predLocked && previsoes < 12) ? "var(--muted)" : "var(--muted)",
-            cursor: "pointer", opacity: (!predLocked && previsoes < 12) ? 0.5 : 1,
+            color: tab === "jogos" ? "var(--neon)" : "var(--muted)",
+            cursor: "pointer",
           }}
         >
           {t.palpitesJogos}
@@ -151,8 +163,8 @@ export function PalpitesScreen() {
         </button>
       </div>
 
-      {/* ── Aviso de trava ── */}
-      {tab === "jogos" && !predLocked && previsoes < 12 && (
+      {/* ── Aviso de trava — só aparece quando não veio do botão Palpite ── */}
+      {tab === "jogos" && !predLocked && previsoes < 12 && !bypassGate && (
         <div style={{
           padding: "14px 16px", borderRadius: "var(--radius)",
           background: "rgba(255,90,90,0.08)", border: "1px solid rgba(255,90,90,0.3)",

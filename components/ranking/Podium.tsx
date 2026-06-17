@@ -138,13 +138,13 @@ function PodiumC({ top3, adminDelta, bonus }: { top3: Player[]; adminDelta: Reco
 
 // ── Componente principal ──────────────────────────────────────────
 export function Podium() {
-  const { podium, adminDelta, desafios, comboBank, penalty, participantes, currentGrupoId, matchPts } = useBolao();
+  const { podium, adminDelta, desafios, comboBank, penalty, participantes, currentGrupoId, matchPts, challengePts } = useBolao();
   const DESAFIO_CATS = useDesafioCats();
   const bonus = bonusPts(desafios, DESAFIO_CATS, comboBank, penalty);
   const doGrupo = currentGrupoId
     ? participantes.filter((p) => p.grupoId === currentGrupoId && p.ativo)
     : participantes.filter((p) => p.ativo);
-  const players = participantesToPlayers(doGrupo, adminDelta, matchPts);
+  const players = participantesToPlayers(doGrupo, matchPts, challengePts);
   const ranked = rankWithEff(players, adminDelta, bonus);
   const top3 = ranked.slice(0, 3);
 
