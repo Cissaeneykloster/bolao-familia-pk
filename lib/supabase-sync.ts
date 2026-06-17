@@ -331,6 +331,28 @@ export async function syncAllMatches(matches: Match[]): Promise<number> {
   return rows.length;
 }
 
+/**
+ * Libera jogos novos: sobe ao banco APENAS os jogos do seed que ainda não
+ * existem na tabela `matches` (insert-only). Preserva as linhas existentes —
+ * inclusive edições do admin (horário/label) — graças ao `ignoreDuplicates`.
+ * Mantém o `ord` canônico do seed (índice em MATCHES). Retorna quantos subiram.
+ */
+export async function seedMissingMatches(
+  localMatches: Match[],
+  existingIds: Set<string>,
+): Promise<number> {
+  const rows = localMatches
+    .map((m, i) => ({ m, i }))
+    .filter(({ m }) => !existingIds.has(m.id))
+    .map(({ m, i }) => matchToRow(m, i));
+  if (rows.length === 0) return 0;
+  const { error } = await supabase
+    .from("matches")
+    .upsert(rows, { onConflict: "id", ignoreDuplicates: true });
+  if (error) { console.error("[SB] seedMissingMatches:", error.message); return 0; }
+  return rows.length;
+}
+
 /** Atualiza/insere um jogo (admin edita data/hora/etc.) */
 export async function upsertMatch(m: Match, ord = 0) {
   const { error } = await supabase.from("matches").upsert(matchToRow(m, ord));
