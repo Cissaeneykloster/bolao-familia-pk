@@ -145,32 +145,45 @@ export function JogoCard({ match, showPalpiteBtn }: { match: Match; showPalpiteB
 
       {/* Info extra — só mostra "Apostar"/"Palpite" se não há resultado oficial */}
       {effectiveStatus === "upcoming" && !hasOfficial && (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          {match.training ? (
-            <span style={{ fontSize: 12, color: "var(--warn)" }}>
-              {t.apostas}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            {match.training ? (
+              <span style={{ fontSize: 12, color: "var(--warn)" }}>
+                {t.apostas}
+              </span>
+            ) : (
+              <span style={{ fontSize: 12, color: "var(--warn)" }}>
+                {lang === "en" ? "⏰ Closes in" : "⏰ Fecha em"} {countdown}
+              </span>
+            )}
+            <button
+              aria-label={`${guess ? (lang === "en" ? "Edit bet" : "Editar palpite") : showPalpiteBtn ? "Palpite" : t.apostar} ${countryName(match.a.name, lang)} × ${countryName(match.b.name, lang)}`}
+              onClick={() => {
+                setFocusMatch(match.id);
+                setScreen("palpites");
+              }}
+              style={{
+                background: guess ? "var(--field)" : showPalpiteBtn ? "var(--neon)" : "var(--field)",
+                color: guess ? "var(--neon)" : showPalpiteBtn ? "#000" : "var(--neon)",
+                border: guess || !showPalpiteBtn ? "1px solid rgba(0,255,135,0.2)" : "none",
+                borderRadius: 8,
+                padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
+              }}
+            >
+              {guess ? (lang === "en" ? "✏️ Edit" : "✏️ Editar") : showPalpiteBtn ? (lang === "en" ? "Bet" : "Palpite") : t.apostar}
+            </button>
+          </div>
+
+          {/* Indica se o usuário já registrou palpite para este jogo */}
+          {guess ? (
+            <span style={{ fontSize: 11, color: "var(--ok)", fontWeight: 600 }}>
+              ✅ {t.seuPalpite} <strong style={{ color: "var(--text)" }}>{guess.a} × {guess.b}</strong>
             </span>
           ) : (
-            <span style={{ fontSize: 12, color: "var(--warn)" }}>
-              {lang === "en" ? "⏰ Closes in" : "⏰ Fecha em"} {countdown}
+            <span style={{ fontSize: 11, color: "var(--muted)", fontStyle: "italic" }}>
+              {lang === "en" ? "⚪ No bet yet" : "⚪ Você ainda não palpitou"}
             </span>
           )}
-          <button
-            aria-label={`${showPalpiteBtn ? "Palpite" : t.apostar} ${countryName(match.a.name, lang)} × ${countryName(match.b.name, lang)}`}
-            onClick={() => {
-              setFocusMatch(match.id);
-              setScreen("palpites");
-            }}
-            style={{
-              background: showPalpiteBtn ? "var(--neon)" : "var(--field)",
-              color: showPalpiteBtn ? "#000" : "var(--neon)",
-              border: showPalpiteBtn ? "none" : "1px solid rgba(0,255,135,0.2)",
-              borderRadius: 8,
-              padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
-            }}
-          >
-            {showPalpiteBtn ? (lang === "en" ? "Bet" : "Palpite") : t.apostar}
-          </button>
         </div>
       )}
 

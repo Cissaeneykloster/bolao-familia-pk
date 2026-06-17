@@ -27,9 +27,31 @@ describe("TabBar", () => {
     expect(screen.queryByRole("button", { name: /gerência|admin/i })).not.toBeInTheDocument();
   });
 
-  it("mostra o badge '4' em Palpites", () => {
+  it("badge de Palpites conta jogos abertos sem palpite", () => {
+    const future = Date.now() + 7 * 24 * 3600_000; // não travado pelo kickoff
+    useBolao.setState({
+      matches: [
+        { id: "m1", phase: "grupos", group: "A", status: "upcoming", a: { name: "X", flag: "" }, b: { name: "Y", flag: "" }, kickoff: future },
+        { id: "m2", phase: "grupos", group: "A", status: "upcoming", a: { name: "X", flag: "" }, b: { name: "Y", flag: "" }, kickoff: future },
+      ],
+      guesses: {},
+      officialResults: {},
+    });
     render(<TabBar />);
-    expect(screen.getByText("4")).toBeInTheDocument();
+    expect(screen.getByText("2")).toBeInTheDocument();
+  });
+
+  it("badge de Palpites some quando todos os jogos abertos já têm palpite", () => {
+    const future = Date.now() + 7 * 24 * 3600_000;
+    useBolao.setState({
+      matches: [
+        { id: "m1", phase: "grupos", group: "A", status: "upcoming", a: { name: "X", flag: "" }, b: { name: "Y", flag: "" }, kickoff: future },
+      ],
+      guesses: { m1: { a: 1, b: 0 } },
+      officialResults: {},
+    });
+    render(<TabBar />);
+    expect(screen.queryByLabelText(/palpites pendentes/i)).not.toBeInTheDocument();
   });
 
   it("clicar numa aba muda a screen no store", async () => {

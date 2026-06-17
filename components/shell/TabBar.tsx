@@ -2,18 +2,39 @@
 
 import { useBolao } from "@/lib/store";
 import { useLang, T } from "@/lib/useLang";
+import { isMatchLocked } from "@/lib/standings";
 
 type Screen = "ranking" | "jogos" | "palpites" | "grupos" | "desafios" | "feed" | "regulamento";
+
+/**
+ * Badge da aba Palpites: nº de jogos da Copa ainda ABERTOS para palpite
+ * (não treino, sem resultado oficial e não travados pelo kickoff) em que o
+ * usuário ainda NÃO palpitou. Some quando está tudo em dia. ">9" vira "9+".
+ */
+function usePalpitesBadge(): string | undefined {
+  const { matches, guesses, officialResults } = useBolao();
+  const pending = matches.filter(
+    (m) =>
+      !m.training &&
+      m.status === "upcoming" &&
+      !officialResults[m.id] &&
+      !isMatchLocked(m) &&
+      !guesses[m.id],
+  ).length;
+  if (pending <= 0) return undefined;
+  return pending > 9 ? "9+" : String(pending);
+}
 
 export function TabBar() {
   const { current, setScreen } = useBolao();
   const lang = useLang();
   const t = T[lang];
+  const palpitesBadge = usePalpitesBadge();
 
   const TABS: { id: Screen; icon: string; label: string; badge?: string }[] = [
     { id: "ranking",     icon: "🏆", label: t.ranking },
     { id: "jogos",       icon: "⚽", label: t.jogos },
-    { id: "palpites",    icon: "🎯", label: t.palpites, badge: "4" },
+    { id: "palpites",    icon: "🎯", label: t.palpites, badge: palpitesBadge },
     { id: "grupos",      icon: "📊", label: t.grupos },
     { id: "desafios",    icon: "🎮", label: t.desafios },
     { id: "feed",        icon: "🔥", label: t.feed },
@@ -135,11 +156,12 @@ export function TopTabs() {
   const { current, setScreen } = useBolao();
   const lang = useLang();
   const t = T[lang];
+  const palpitesBadge = usePalpitesBadge();
 
   const TABS: { id: Screen; icon: string; label: string; badge?: string }[] = [
     { id: "ranking",     icon: "🏆", label: t.ranking },
     { id: "jogos",       icon: "⚽", label: t.jogos },
-    { id: "palpites",    icon: "🎯", label: t.palpites, badge: "4" },
+    { id: "palpites",    icon: "🎯", label: t.palpites, badge: palpitesBadge },
     { id: "grupos",      icon: "📊", label: t.grupos },
     { id: "desafios",    icon: "🎮", label: t.desafios },
     { id: "feed",        icon: "🔥", label: t.feed },

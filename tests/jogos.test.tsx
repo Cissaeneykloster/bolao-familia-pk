@@ -42,12 +42,25 @@ describe("JogoCard", () => {
     expect(screen.getByText(/47/)).toBeInTheDocument();
   });
 
-  it("upcoming mostra botão Apostar agora", async () => {
+  it("upcoming mostra botão Apostar e leva para palpites", async () => {
     const user = userEvent.setup();
     render(<JogoCard match={upcoming} />);
-    expect(screen.getByRole("button", { name: /apostar agora/i })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /apostar agora/i }));
+    expect(screen.getByRole("button", { name: /apostar/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /apostar/i }));
     expect(useBolao.getState().current).toBe("palpites");
+  });
+
+  it("upcoming sem palpite sinaliza que o usuário ainda não palpitou", () => {
+    render(<JogoCard match={upcoming} />);
+    expect(screen.getByText(/ainda não palpitou/i)).toBeInTheDocument();
+  });
+
+  it("upcoming com palpite mostra o placar registrado e botão Editar", () => {
+    useBolao.setState({ guesses: { m4: { a: 2, b: 1 } } });
+    render(<JogoCard match={upcoming} />);
+    expect(screen.getByText(/seu palpite/i)).toBeInTheDocument();
+    expect(screen.getByText("2 × 1")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
   });
 
   it("resultFix muda o placar exibido (5×0)", () => {
