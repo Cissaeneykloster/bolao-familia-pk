@@ -37,8 +37,11 @@ Os placares oficiais podem ser preenchidos automaticamente a partir da
 [football-data.org](https://www.football-data.org/) (plano grátis cobre a
 competição FIFA World Cup, código `WC`).
 
-- **Cron (Vercel):** `vercel.json` agenda `GET /api/sync-results` de hora em hora.
-  No plano Hobby a Vercel executa crons ~1x/dia; o plano Pro respeita o `schedule`.
+- **Cron (Vercel):** `vercel.json` agenda `GET /api/sync-results` **1x/dia** (13:00 UTC) —
+  o plano **Hobby só permite cron diário**. Para sync mais frequente (jogos saem
+  ao longo do dia): no **Pro**, troque o `schedule` para `*/30 * * * *`; sem Pro,
+  aponte um cron externo grátis (ex.: cron-job.org) para a URL `/api/sync-results`
+  enviando o header `Authorization: Bearer <CRON_SECRET>`.
 - **O que o endpoint faz:** busca os jogos `FINISHED`, casa com os jogos do app
   (de-para em `lib/results-api.ts`, por código FIFA + reorientação do placar),
   grava os novos/alterados em `official_results` e recalcula `match_pts` com a
