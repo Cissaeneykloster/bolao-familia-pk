@@ -35,8 +35,8 @@ function MiniBreakdown({ match, guess }: { match: Match; guess: { a: number; b: 
 }
 
 // ── Card principal ────────────────────────────────────────────────
-export function JogoCard({ match }: { match: Match }) {
-  const { guesses, resultFix, setScreen, card, officialResults } = useBolao();
+export function JogoCard({ match, showPalpiteBtn }: { match: Match; showPalpiteBtn?: boolean }) {
+  const { guesses, resultFix, setScreen, setFocusMatch, card, officialResults } = useBolao();
   const lang = useLang();
   const t = T[lang];
   // Amistosos de treino: deadline = ano 2099 (nunca fecha) EXCETO se resultado oficial lançado
@@ -143,7 +143,7 @@ export function JogoCard({ match }: { match: Match }) {
         </div>
       </div>
 
-      {/* Info extra — só mostra "Apostar" se não há resultado oficial */}
+      {/* Info extra — só mostra "Apostar"/"Palpite" se não há resultado oficial */}
       {effectiveStatus === "upcoming" && !hasOfficial && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           {match.training ? (
@@ -156,15 +156,20 @@ export function JogoCard({ match }: { match: Match }) {
             </span>
           )}
           <button
-            aria-label={`${t.apostar} ${countryName(match.a.name, lang)} × ${countryName(match.b.name, lang)}`}
-            onClick={() => setScreen("palpites")}
+            aria-label={`${showPalpiteBtn ? "Palpite" : t.apostar} ${countryName(match.a.name, lang)} × ${countryName(match.b.name, lang)}`}
+            onClick={() => {
+              setFocusMatch(match.id);
+              setScreen("palpites");
+            }}
             style={{
-              background: "var(--field)", color: "var(--neon)",
-              border: "1px solid rgba(0,255,135,0.2)", borderRadius: 8,
-              padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer",
+              background: showPalpiteBtn ? "var(--neon)" : "var(--field)",
+              color: showPalpiteBtn ? "#000" : "var(--neon)",
+              border: showPalpiteBtn ? "none" : "1px solid rgba(0,255,135,0.2)",
+              borderRadius: 8,
+              padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
             }}
           >
-            {t.apostar}
+            {showPalpiteBtn ? (lang === "en" ? "Bet" : "Palpite") : t.apostar}
           </button>
         </div>
       )}

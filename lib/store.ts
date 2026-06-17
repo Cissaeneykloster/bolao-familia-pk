@@ -24,6 +24,7 @@ interface BolaoState {
   sound: boolean;
   live: boolean;
   current: Screen;
+  focusMatchId: string | null;
 
   // Grupo ativo (persiste — cada dispositivo sabe a qual grupo pertence)
   currentGrupoId: string | null;
@@ -83,6 +84,7 @@ interface BolaoState {
   toggleSound: () => void;
   toggleLive: () => void;
   setScreen: (s: Screen) => void;
+  setFocusMatch: (id: string | null) => void;
   setCurrentGrupo: (id: string | null) => void;
   setCurrentUserApelido: (apelido: string | null) => void;
 
@@ -161,6 +163,7 @@ const initialState = {
   sound: true,
   live: false,
   current: "ranking" as Screen,
+  focusMatchId: null as string | null,
   currentGrupoId: null as string | null,
   currentUserApelido: null as string | null,
 
@@ -204,6 +207,7 @@ export const useBolao = create<BolaoState>()(
       toggleSound: () => set((s) => ({ sound: !s.sound })),
       toggleLive: () => set((s) => ({ live: !s.live })),
       setScreen: (s) => set({ current: s }),
+      setFocusMatch: (id) => set({ focusMatchId: id }),
       setCurrentGrupo: (id) => set({ currentGrupoId: id }),
       setCurrentUserApelido: (apelido) => set({ currentUserApelido: apelido }),
 

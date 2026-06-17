@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useBolao } from "@/lib/store";
 import { mScore } from "@/lib/scoring";
 import { MATCHES, GROUPS } from "@/lib/mock-data";
@@ -15,7 +15,7 @@ import { useLang, T, countryName } from "@/lib/useLang";
 type Tab = "grupos" | "jogos";
 
 export function PalpitesScreen() {
-  const { guesses, resultFix, groupPredictions, groupPredictionsSaved, addFeedEvent, officialResults } = useBolao();
+  const { guesses, resultFix, groupPredictions, groupPredictionsSaved, addFeedEvent, officialResults, focusMatchId, setFocusMatch } = useBolao();
   const { show } = useToast();
   const { fire } = useConfetti();
   const lang = useLang();
@@ -24,8 +24,37 @@ export function PalpitesScreen() {
   const predLocked = arePredictionsLocked(groupPredictionsSaved);
   const { total: ptsPrev } = calcGroupPredictionPts(groupPredictions, GROUPS, MATCHES, resultFix);
 
-  // Decide qual aba mostrar por padrão
-  const [tab, setTab] = useState<Tab>(predLocked ? "jogos" : "grupos");
+  // Decide qual aba mostrar por padrão; se vier de "Palpite" de um jogo, vai direto para jogos
+  const [tab, setTab] = useState<Tab>(focusMatchId || predLocked ? "jogos" : "grupos");
+  // Se veio via botão Palpite do JOGOS, libera os palpites sem exigir previsão dos grupos
+  const [bypassGate, setBypassGate] = useState(!!focusMatchId);
+  const matchRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Scroll para o jogo focado quando a aba jogos abre
+  useEffect(() => {
+    if (!focusMatchId) return;
+    setTab("jogos");
+    setBypassGate(true);
+
+    let attempts = 0;
+    const tryScroll = () => {
+      const el = matchRefs.current[focusMatchId];
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        setFocusMatch(null);
+        return;
+      }
+      // Tenta até 10x em intervalos de 80ms enquanto o DOM renderiza
+      if (++attempts < 10) {
+        setTimeout(tryScroll, 80);
+      } else {
+        setFocusMatch(null);
+      }
+    };
+
+    const id = setTimeout(tryScroll, 80);
+    return () => clearTimeout(id);
+  }, [focusMatchId, setFocusMatch]);
 
   // Conta palpites dos jogos
   const copaMatches = MATCHES.filter((m) => m.phase !== "amistoso");
@@ -152,7 +181,7 @@ export function PalpitesScreen() {
       {tab === "grupos" && <PrevisaoGrupos />}
 
       {/* ── Aba: Palpites dos jogos ── */}
-      {tab === "jogos" && (predLocked || previsoes >= 12) && (
+      {tab === "jogos" && (predLocked || previsoes >= 12 || bypassGate) && (
         <>
           {/* Anel de progresso */}
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -249,7 +278,11 @@ export function PalpitesScreen() {
                     );
                   }
                   // Sem resultado → input normal
-                  return <PlacarInput key={m.id} match={m} onSaved={() => handleSaved(m.id)} />;
+                  return (
+                    <div key={m.id} ref={(el) => { matchRefs.current[m.id] = el; }}>
+                      <PlacarInput match={m} onSaved={() => handleSaved(m.id)} />
+                    </div>
+                  );
                 })}
               </div>
             </section>
@@ -265,14 +298,11 @@ export function PalpitesScreen() {
                 {t.disponiveis}
               </h3>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {upcoming.slice(0, 20).map((m) => (
-                  <PlacarInput key={m.id} match={m} onSaved={() => handleSaved(m.id)} />
+                {upcoming.map((m) => (
+                  <div key={m.id} ref={(el) => { matchRefs.current[m.id] = el; }}>
+                    <PlacarInput match={m} onSaved={() => handleSaved(m.id)} />
+                  </div>
                 ))}
-                {upcoming.length > 20 && (
-                  <p style={{ fontSize: 12, color: "var(--muted)", textAlign: "center" }}>
-                    + {upcoming.length - 20} jogos disponíveis
-                  </p>
-                )}
               </div>
             </section>
           )}
