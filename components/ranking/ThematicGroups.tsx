@@ -1,16 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { useBolao } from "@/lib/store";
 import { rankWithEff, bonusPts, effPts } from "@/lib/scoring";
 import { useDesafioCats } from "@/lib/useDesafios";
 import { participantesToPlayers } from "@/lib/players";
 import { TIERS, tierForRank } from "@/lib/tiers";
+import { PointsBreakdown } from "./PointsBreakdown";
 import type { Player } from "@/lib/types";
 
 export function ThematicGroups() {
   const { adminDelta, desafios, comboBank, penalty, participantes, currentGrupoId, matchPts, challengePts } = useBolao();
   const DESAFIO_CATS = useDesafioCats();
   const bonus = bonusPts(desafios, DESAFIO_CATS, comboBank, penalty);
+  const [openName, setOpenName] = useState<string | null>(null);
 
   const doGrupo = currentGrupoId
     ? participantes.filter((p) => p.grupoId === currentGrupoId && p.ativo)
@@ -63,31 +66,43 @@ export function ThematicGroups() {
               </span>
             </div>
 
-            {/* Membros */}
-            {members.map((p) => (
-              <div
-                key={p.name}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "6px 12px", borderTop: "1px solid var(--border)",
-                }}
-              >
-                <div style={{
-                  width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
-                  background: "var(--field)", color: "var(--neon)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 10, fontWeight: 700,
-                }}>
-                  {p.initials}
+            {/* Membros — clique abre o detalhamento dos pontos */}
+            {members.map((p) => {
+              const open = openName === p.name;
+              return (
+                <div key={p.name} style={{ borderTop: "1px solid var(--border)" }}>
+                  <button
+                    onClick={() => setOpenName(open ? null : p.name)}
+                    aria-label={`Detalhar pontos de ${p.name}`}
+                    style={{
+                      width: "100%", background: "none", border: "none", cursor: "pointer",
+                      display: "flex", alignItems: "center", gap: 8, padding: "6px 12px",
+                    }}
+                  >
+                    <div style={{
+                      width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
+                      background: "var(--field)", color: "var(--neon)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 10, fontWeight: 700,
+                    }}>
+                      {p.initials}
+                    </div>
+                    <span style={{ flex: 1, textAlign: "left", fontSize: 13, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {p.name}
+                    </span>
+                    <span className="font-bebas" style={{ fontSize: 16, color: "var(--text)" }}>
+                      {effPts(p, adminDelta, bonus)}
+                    </span>
+                    <span style={{ fontSize: 10, color: "var(--muted)", width: 12 }}>{open ? "▴" : "▾"}</span>
+                  </button>
+                  {open && (
+                    <div style={{ padding: "2px 12px 10px 46px", background: "var(--bg-2)" }}>
+                      <PointsBreakdown name={p.name} />
+                    </div>
+                  )}
                 </div>
-                <span style={{ flex: 1, fontSize: 13, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {p.name}
-                </span>
-                <span className="font-bebas" style={{ fontSize: 16, color: "var(--text)" }}>
-                  {effPts(p, adminDelta, bonus)}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         );
       })}
