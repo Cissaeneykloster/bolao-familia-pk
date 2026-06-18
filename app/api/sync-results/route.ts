@@ -83,10 +83,19 @@ export async function GET(request: Request) {
   const { data: parts } = await supabase.from("participantes").select("apelido,ativo");
   const ativos = (parts ?? []).filter((p) => p.ativo).map((p) => ({ apelido: p.apelido as string }));
 
-  const { data: gRows } = await supabase.from("guesses").select("apelido,match_id,gols_a,gols_b");
+  // PostgREST corta em 1000 linhas/requisição — pagina até esgotar, senão o
+  // ranking é recalculado com palpites parciais (ficaria subcontado)
   const allGuesses: Record<string, Record<string, { a: number; b: number }>> = {};
-  for (const g of gRows ?? []) {
-    (allGuesses[g.match_id] ??= {})[g.apelido] = { a: g.gols_a, b: g.gols_b };
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data: gRows } = await supabase
+      .from("guesses")
+      .select("apelido,match_id,gols_a,gols_b")
+      .range(from, from + PAGE - 1);
+    for (const g of gRows ?? []) {
+      (allGuesses[g.match_id] ??= {})[g.apelido] = { a: g.gols_a, b: g.gols_b };
+    }
+    if (!gRows || gRows.length < PAGE) break;
   }
 
   const pts = computeMatchPts(ativos, merged, allGuesses, appMatches, PENALTY_START_MS);

@@ -272,14 +272,23 @@ export async function loadGuesses(apelido: string): Promise<Record<string, { a: 
 
 /** Todos os palpites (para cálculo de pontos pelo admin) */
 export async function loadAllGuesses(): Promise<Record<string, Record<string, { a: number; b: number }>>> {
-  const { data, error } = await supabase.from("guesses").select("*");
-  if (error) { console.error("[SB] loadAllGuesses:", error.message); return {}; }
-
   // Resultado: { matchId: { apelido: { a, b } } }
   const result: Record<string, Record<string, { a: number; b: number }>> = {};
-  for (const r of data ?? []) {
-    if (!result[r.match_id]) result[r.match_id] = {};
-    result[r.match_id][r.apelido] = { a: r.gols_a, b: r.gols_b };
+
+  // PostgREST devolve no máx. 1000 linhas por requisição — pagina até esgotar,
+  // senão palpites além da 1ª página somem e o ranking calcula com dados parciais.
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from("guesses")
+      .select("*")
+      .range(from, from + PAGE - 1);
+    if (error) { console.error("[SB] loadAllGuesses:", error.message); break; }
+    for (const r of data ?? []) {
+      if (!result[r.match_id]) result[r.match_id] = {};
+      result[r.match_id][r.apelido] = { a: r.gols_a, b: r.gols_b };
+    }
+    if (!data || data.length < PAGE) break;
   }
   return result;
 }
