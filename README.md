@@ -43,10 +43,11 @@ já existente, então as correções do admin prevalecem.
   reorientação mandante/visitante), grava em `official_results` **apenas os que
   faltam** e recalcula `match_pts` com a mesma regra do admin (`computeMatchPts`).
   Jogos não-casados voltam em `unmatched` (úteis para refinar o de-para).
-- **Disparo:** Vercel Cron (`vercel.json`) **1x/dia** (13:00 UTC) — o plano
-  **Hobby só permite cron diário**. O admin também pode disparar sob demanda pelo
-  botão **🔄 Sincronizar agora** na aba Resultados. Para sync mais frequente sem o
-  Pro, aponte um cron externo grátis (ex.: cron-job.org) para `/api/sync-results`.
+- **Disparo:** Vercel Cron (`vercel.json`) **de hora em hora** (`0 * * * *`).
+  ⚠️ Cron sub-diário exige o plano **Vercel Pro** — no **Hobby** o deploy falha
+  (lá só é permitido cron diário). O admin também pode disparar sob demanda pelo
+  botão **🔄 Sincronizar agora** na aba Resultados; alternativa sem Pro é um cron
+  externo grátis (ex.: cron-job.org) apontando para `/api/sync-results`.
 - **Variáveis de ambiente (Vercel → Project Settings → Environment Variables):**
   - `NEXT_PUBLIC_SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (ou
     `NEXT_PUBLIC_SUPABASE_ANON_KEY`) — acesso ao banco
