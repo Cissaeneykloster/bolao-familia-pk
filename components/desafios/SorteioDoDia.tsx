@@ -29,7 +29,7 @@ export function SorteioDoDia() {
     if (!currentUserApelido) { show("Entre pelo seu link de acesso para pontuar."); return; }
     setMyChallengeDone(done);
     if (done) { fire(); show(`✅ +${draw.pts} pts!`); }
-    else show(`❌ −${draw.pts} pts`);
+    else show("Marcado como não feito — 0 pts");
     if (done && cat) {
       addFeedEvent({
         type: "challenge", emoji: cat.icon,
@@ -37,7 +37,8 @@ export function SorteioDoDia() {
         pts: `+${draw.pts} pts`,
       });
     }
-    await upsertChallengeDone(currentUserApelido, currentGrupoId ?? "", today, done, done ? draw.pts : -draw.pts);
+    // Desafio não realizado não desconta pontos: soma 0 (só o "Fiz!" pontua)
+    await upsertChallengeDone(currentUserApelido, currentGrupoId ?? "", today, done, done ? draw.pts : 0);
     setChallengePts(await loadChallengePts());
   };
 
@@ -94,7 +95,7 @@ export function SorteioDoDia() {
             <div style={{ textAlign: "right" }}>
               <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>vale</p>
               <p className="font-bebas" style={{ fontSize: 22, margin: 0, color: "var(--warn)" }}>
-                ±{draw.pts} pts
+                +{draw.pts} pts
               </p>
             </div>
           </div>
@@ -142,11 +143,11 @@ export function SorteioDoDia() {
             <div style={{
               fontSize: 12, fontWeight: 700, textAlign: "center", padding: "6px 0",
               borderTop: "1px solid var(--border)",
-              color: myChallengeDone ? "var(--neon)" : "var(--danger)",
+              color: myChallengeDone ? "var(--neon)" : "var(--muted)",
             }}>
               {myChallengeDone
                 ? `✅ +${draw.pts} pts somados ao seu ranking`
-                : `❌ −${draw.pts} pts no seu ranking`}
+                : "Marcado como não feito — 0 pts (não desconta)"}
             </div>
           )}
 

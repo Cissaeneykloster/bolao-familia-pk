@@ -34,7 +34,7 @@ export function BancoDeDesafios() {
             <span style={{ fontWeight: 700, color: "var(--text)", fontSize: 14 }}>
               {cat.icon} {cat.name}
             </span>
-            <span style={{ fontSize: 12, color: "var(--muted)" }}>vale ±{cat.pts} pts</span>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>vale +{cat.pts} pts</span>
           </div>
 
           <div style={{ padding: "8px 0" }}>
@@ -60,7 +60,7 @@ export function BancoDeDesafios() {
                   </span>
                   {isDrawn ? (
                     <span style={{ fontSize: 11, color: "var(--neon)", fontWeight: 700 }}>
-                      sorteado · ±{cat.pts}
+                      sorteado · +{cat.pts}
                     </span>
                   ) : (
                     <span style={{ fontSize: 10, color: "var(--muted)" }}>indisponível</span>

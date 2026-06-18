@@ -87,11 +87,11 @@ export function RegulamentoScreenEn() {
           Every day, 1 challenge is randomly drawn from the pool (20 options). Complete it and mark ✅ in the app before midnight Vancouver time.
         </p>
         <Table rows={[
-          ["🛏️ Bedroom", "±3 pts"],
-          ["🏠 Home", "±3 pts"],
-          ["❤️ Act of Service", "±5 pts"],
-          ["📚 Intellectual", "±4 pts"],
-          ["💧 Health", "±3 pts"],
+          ["🛏️ Bedroom", "+3 pts"],
+          ["🏠 Home", "+3 pts"],
+          ["❤️ Act of Service", "+5 pts"],
+          ["📚 Intellectual", "+4 pts"],
+          ["💧 Health", "+3 pts"],
           ["🔥 Combo (all 4 done)", "+10 pts bonus"],
         ]} />
         <p style={{ fontSize: 12, color: "var(--muted)" }}>
