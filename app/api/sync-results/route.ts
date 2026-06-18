@@ -62,19 +62,20 @@ export async function GET(request: Request) {
   );
   const novos = results.filter((r) => !current.has(r.matchId));
 
-  if (novos.length === 0) {
-    return Response.json({ ok: true, finished: results.length, applied: 0, unmatched });
-  }
-
   const now = new Date().toISOString();
-  const { error: resErr } = await supabase.from("official_results").upsert(
-    novos.map((r) => ({ match_id: r.matchId, sa: r.sa, sb: r.sb, updated_at: now })),
-  );
-  if (resErr) {
-    return Response.json({ error: `upsert official_results: ${resErr.message}` }, { status: 500 });
+
+  // Grava só os placares que faltam (preserva ajustes manuais do admin)
+  if (novos.length > 0) {
+    const { error: resErr } = await supabase.from("official_results").upsert(
+      novos.map((r) => ({ match_id: r.matchId, sa: r.sa, sb: r.sb, updated_at: now })),
+    );
+    if (resErr) {
+      return Response.json({ error: `upsert official_results: ${resErr.message}` }, { status: 500 });
+    }
   }
 
-  // 4. Recalcula match_pts com a mesma regra do admin
+  // 4. Recalcula match_pts SEMPRE (mesma regra do admin) — auto-corrige valores
+  //    defasados no ranking mesmo quando não há resultado novo a aplicar
   const merged: Record<string, { sa: number; sb: number }> = {};
   for (const [id, sc] of current) merged[id] = sc;
   for (const r of novos) merged[r.matchId] = { sa: r.sa, sb: r.sb };
@@ -96,7 +97,10 @@ export async function GET(request: Request) {
     return Response.json({ error: `upsert match_pts: ${ptsErr.message}` }, { status: 500 });
   }
 
-  return Response.json({ ok: true, finished: results.length, applied: novos.length, unmatched });
+  return Response.json({
+    ok: true, finished: results.length, applied: novos.length,
+    recomputed: Object.keys(pts).length, unmatched,
+  });
 }
 
 /** Carrega os jogos do app do banco; cai pro seed local se a tabela vazia. */
