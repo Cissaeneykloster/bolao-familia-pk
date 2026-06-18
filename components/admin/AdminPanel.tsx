@@ -415,6 +415,8 @@ function TabResultados() {
   const [syncResultMsg, setSyncResultMsg] = useState("");
   const [espnSyncing, setEspnSyncing] = useState(false);
   const [espnMsg, setEspnMsg] = useState("");
+  const [recalcing, setRecalcing] = useState(false);
+  const [recalcMsg, setRecalcMsg] = useState("");
   // TODOS os jogos ordenados por data (incluindo treinos)
   const allMatches = [...matches]
     .sort((a, b) => (a.kickoff ?? 0) - (b.kickoff ?? 0));
@@ -470,6 +472,46 @@ function TabResultados() {
           }}
         >
           {espnSyncing ? "⏳..." : "🔄 Sincronizar agora"}
+        </button>
+      </div>
+
+      {/* Recalcular pontos — refaz match_pts a partir dos palpites reais (sem ESPN) */}
+      <div style={{
+        padding: "10px 14px", borderRadius: 10,
+        background: "rgba(255,216,77,0.06)", border: "1px solid rgba(255,216,77,0.25)",
+        display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
+      }}>
+        <div>
+          <p style={{ fontSize: 12, fontWeight: 700, color: "var(--warn)", margin: 0 }}>♻️ Recalcular pontos do ranking</p>
+          <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>
+            Refaz os pontos de TODOS com base nos palpites + resultados oficiais. Use se o ranking divergir do detalhamento.
+          </p>
+          {recalcMsg && <p style={{ fontSize: 11, color: "var(--warn)", margin: "2px 0 0" }}>{recalcMsg}</p>}
+        </div>
+        <button
+          onClick={async () => {
+            setRecalcing(true);
+            setRecalcMsg("Recalculando…");
+            try {
+              const allGuesses = await loadAllGuesses();
+              recalcAllMatchPts(participantes, allGuesses);
+              const newPts = useBolao.getState().matchPts;
+              await upsertMatchPtsBatch(newPts);
+              setRecalcMsg(`✅ ${Object.keys(newPts).length} participante(s) atualizados`);
+            } catch (e) {
+              setRecalcMsg(`⚠️ ${(e as Error).message}`);
+            }
+            setRecalcing(false);
+            setTimeout(() => setRecalcMsg(""), 6000);
+          }}
+          disabled={recalcing}
+          style={{
+            padding: "7px 12px", borderRadius: 7, fontSize: 11, fontWeight: 700,
+            border: "1px solid rgba(255,216,77,0.4)", background: "rgba(255,216,77,0.12)",
+            color: "var(--warn)", cursor: "pointer", whiteSpace: "nowrap",
+          }}
+        >
+          {recalcing ? "⏳..." : "♻️ Recalcular"}
         </button>
       </div>
 

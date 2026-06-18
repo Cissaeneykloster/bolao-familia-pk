@@ -1,6 +1,7 @@
 "use client";
 
 import { SorteioDoDia } from "@/components/desafios/SorteioDoDia";
+import { HistoricoDesafios } from "@/components/desafios/HistoricoDesafios";
 import { BancoDeDesafios } from "@/components/desafios/BancoDeDesafios";
 
 export function DesafiosScreen() {
@@ -10,6 +11,8 @@ export function DesafiosScreen() {
         🎮 Desafios
       </h2>
       <SorteioDoDia />
+      <div style={{ height: 1, background: "var(--border)" }} />
+      <HistoricoDesafios />
       <div style={{ height: 1, background: "var(--border)" }} />
       <BancoDeDesafios />
     </div>

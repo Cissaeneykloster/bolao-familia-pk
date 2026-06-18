@@ -215,6 +215,48 @@ export async function upsertChallengeDone(
   if (error) console.error("[SB] upsertChallengeDone:", error.message);
 }
 
+/** Item do histórico de desafios do participante. */
+export interface ChallengeHistoryItem {
+  dateBrt: string;
+  done: boolean;
+  pts: number;
+  area: string;      // categoria (para o código X.Y) — "" se o sorteio do dia não estiver no banco
+  itemIdx: number;
+  descricao: string;
+}
+
+/**
+ * Histórico de desafios do participante (mais recente primeiro). Junta
+ * `challenge_done` (o que ele marcou) com `daily_draws` (qual era o desafio
+ * daquele dia, p/ código e descrição).
+ */
+export async function loadMyChallengeHistory(
+  apelido: string, grupoId: string,
+): Promise<ChallengeHistoryItem[]> {
+  const { data: marcas, error } = await supabase
+    .from("challenge_done").select("date_brt,done,pts")
+    .eq("apelido", apelido).order("date_brt", { ascending: false });
+  if (error) { console.error("[SB] loadMyChallengeHistory:", error.message); return []; }
+  if (!marcas || marcas.length === 0) return [];
+
+  const dates = marcas.map((r) => r.date_brt);
+  const draws: Record<string, { area: string; itemIdx: number; descricao: string }> = {};
+  if (grupoId) {
+    const { data: dd } = await supabase
+      .from("daily_draws").select("date_brt,area,item_idx,descricao")
+      .eq("grupo_id", grupoId).in("date_brt", dates);
+    for (const r of dd ?? []) draws[r.date_brt] = { area: r.area, itemIdx: r.item_idx, descricao: r.descricao };
+  }
+
+  return marcas.map((r) => {
+    const d = draws[r.date_brt];
+    return {
+      dateBrt: r.date_brt, done: r.done, pts: r.pts,
+      area: d?.area ?? "", itemIdx: d?.itemIdx ?? 0, descricao: d?.descricao ?? "",
+    };
+  });
+}
+
 // ── Palpites ──────────────────────────────────────────────────────
 
 /** Carrega palpites do participante atual */
