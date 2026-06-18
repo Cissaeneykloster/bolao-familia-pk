@@ -512,8 +512,8 @@ function TabResultados() {
 
       <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
         Informe o resultado de cada jogo. O sistema calcula os pontos automaticamente.
-        Ausência: 2 jogos seguidos sem palpite são carência; do{" "}
-        <strong style={{ color: "var(--danger)" }}>3º consecutivo</strong> em diante,{" "}
+        Ausência: 4 jogos seguidos sem palpite são carência; do{" "}
+        <strong style={{ color: "var(--danger)" }}>5º consecutivo</strong> em diante,{" "}
         <strong style={{ color: "var(--danger)" }}>−3 pts</strong> por jogo (palpitar zera a carência).
       </p>
       {allMatches.map((m) => {
@@ -565,7 +565,7 @@ function TabResultados() {
                   // Palpites reais deste jogo, de todos os participantes (Supabase)
                   const allGuesses = await loadAllGuesses();
                   saveResultAndCalcPts(m.id, draft, participantes, adminGrupoId ?? "", allGuesses[m.id] ?? {}, m.phase, !!m.training);
-                  // Recalcula TODOS os pontos com a regra de ausência sequencial (carência de 2)
+                  // Recalcula TODOS os pontos com a regra de ausência sequencial (carência de 4)
                   if (!m.training) recalcAllMatchPts(participantes, allGuesses);
                   // Grava no Supabase (em background)
                   upsertOfficialResult(m.id, draft.sa, draft.sb);

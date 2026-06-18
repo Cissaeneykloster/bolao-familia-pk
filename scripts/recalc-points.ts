@@ -1,6 +1,6 @@
 /**
  * Recalcula TODOS os pontos de partidas (match_pts) no Supabase aplicando a
- * regra de ausência sequencial (carência de 2 jogos). Uso:
+ * regra de ausência sequencial (carência de 4 jogos). Uso:
  *   npx tsx scripts/recalc-points.ts
  */
 import { MATCHES } from "../lib/mock-data";

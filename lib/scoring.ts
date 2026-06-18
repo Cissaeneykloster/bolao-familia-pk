@@ -92,7 +92,7 @@ export const PONTUACAO_MAXIMA_GRUPOS = SCORING.reduce((s, r) => s + r.pts, 0); /
 
 // ── Penalidade por ausência sequencial de palpites ────────────────
 /** Jogos finalizados CONSECUTIVOS sem palpite tolerados antes de penalizar */
-export const FREE_MISSES = 2;
+export const FREE_MISSES = 4;
 /** Pontos perdidos por jogo sem palpite além da carência */
 export const MISS_PENALTY = 3;
 /**
@@ -107,7 +107,7 @@ export const PENALTY_START_MS = new Date("2026-06-14T03:00:00Z").getTime(); // 1
  * resultados oficiais + palpites reais.
  *
  * Regra de ausência (sequencial): contam-se os jogos finalizados CONSECUTIVOS
- * sem palpite. Os 2 primeiros são carência (0 pts); do 3º consecutivo em diante
+ * sem palpite. Os 4 primeiros são carência (0 pts); do 5º consecutivo em diante
  * perde MISS_PENALTY por jogo. Ao palpitar, a sequência zera e a carência
  * recomeça. Treinos não contam. Processa em ordem cronológica (kickoff).
  *

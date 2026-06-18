@@ -188,16 +188,26 @@ describe("recalcAllMatchPts — reconstrói o ranking a partir do Supabase", () 
     expect(useBolao.getState().matchPts["Cissa"]).toBe(0);
   });
 
-  it("3 jogos seguidos sem palpite (após o marco): do 3º em diante perde -3", () => {
+  it("4 jogos seguidos sem palpite (após o marco): ainda na carência (0)", () => {
     useBolao.setState({ officialResults: {
-      ga1r2: { sa: 1, sb: 0 }, ga2r2: { sa: 1, sb: 0 }, ga1r3: { sa: 1, sb: 0 },
+      ga1r2: { sa: 1, sb: 0 }, ga2r2: { sa: 1, sb: 0 },
+      gb1r2: { sa: 1, sb: 0 }, gb2r2: { sa: 1, sb: 0 },
+    } });
+    useBolao.getState().recalcAllMatchPts(participantes, {});
+    expect(useBolao.getState().matchPts["Cissa"]).toBe(0);
+  });
+
+  it("5 jogos seguidos sem palpite (após o marco): do 5º em diante perde -3", () => {
+    useBolao.setState({ officialResults: {
+      ga1r2: { sa: 1, sb: 0 }, ga2r2: { sa: 1, sb: 0 },
+      gb1r2: { sa: 1, sb: 0 }, gb2r2: { sa: 1, sb: 0 }, ga1r3: { sa: 1, sb: 0 },
     } });
     useBolao.getState().recalcAllMatchPts(participantes, {});
     expect(useBolao.getState().matchPts["Cissa"]).toBe(-3);
   });
 
   it("palpitar zera a carência (idempotente)", () => {
-    // (após o marco) miss, miss, GUESS (zera), miss → nunca chega ao 3º consecutivo
+    // (após o marco) miss, miss, GUESS (zera), miss → nunca chega ao 5º consecutivo
     useBolao.setState({ officialResults: {
       ga1r2: { sa: 1, sb: 0 }, ga2r2: { sa: 1, sb: 0 }, ga1r3: { sa: 1, sb: 0 }, ga2r3: { sa: 1, sb: 0 },
     } });
