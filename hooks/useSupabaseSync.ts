@@ -134,12 +134,20 @@ export function useSupabaseSync() {
     syncAll();
     void syncDaily();
 
-    // Re-sync a cada 30s como fallback (caso Realtime não disparar)
+    // Re-sync a cada 30s como fallback (caso Realtime não dispare). Cobre
+    // TODOS os insumos do ranking — não só resultados/pontos de jogos, mas
+    // também desafios e ajustes do admin, cujas tabelas podem não estar na
+    // publicação Realtime (ver issue #18). Sem isso, esses pontos só
+    // apareceriam ao recarregar a página ("ranking parou de atualizar").
     const pollId = setInterval(async () => {
       const results = await loadOfficialResults();
       setOfficialResults(results);
       const pts = await loadMatchPts();
       if (Object.keys(pts).length > 0) setMatchPts(pts);
+      setChallengePts(await loadChallengePts());
+      setAdminDeltas(await loadAdminDeltas());
+      const parts = await loadParticipantes();
+      if (parts.length > 0) setParticipantes(parts);
     }, 30_000);
 
     // ── Realtime: ouve mudanças no banco ──────────────────────────

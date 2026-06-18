@@ -413,6 +413,8 @@ function TabResultados() {
   const [saved, setSaved] = useState<string | null>(null);
   const [syncingResults, setSyncingResults] = useState(false);
   const [syncResultMsg, setSyncResultMsg] = useState("");
+  const [espnSyncing, setEspnSyncing] = useState(false);
+  const [espnMsg, setEspnMsg] = useState("");
   // TODOS os jogos ordenados por data (incluindo treinos)
   const allMatches = [...matches]
     .sort((a, b) => (a.kickoff ?? 0) - (b.kickoff ?? 0));
@@ -426,6 +428,51 @@ function TabResultados() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {/* Sync automático ESPN — preenche placares que faltam (não sobrescreve) */}
+      <div style={{
+        padding: "10px 14px", borderRadius: 10,
+        background: "rgba(80,160,255,0.06)", border: "1px solid rgba(80,160,255,0.25)",
+        display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
+      }}>
+        <div>
+          <p style={{ fontSize: 12, fontWeight: 700, color: "#5aa0ff", margin: 0 }}>🛰️ Resultados automáticos (ESPN)</p>
+          <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>
+            Preenche os placares dos jogos encerrados. Não sobrescreve o que você já ajustou.
+          </p>
+          {espnMsg && <p style={{ fontSize: 11, color: "#5aa0ff", margin: "2px 0 0" }}>{espnMsg}</p>}
+        </div>
+        <button
+          onClick={async () => {
+            setEspnSyncing(true);
+            setEspnMsg("Buscando na ESPN...");
+            try {
+              const r = await fetch("/api/sync-results");
+              const j = await r.json();
+              if (!r.ok || j.error) {
+                setEspnMsg(`⚠️ ${j.error ?? `erro ${r.status}`}`);
+              } else {
+                setEspnMsg(
+                  `✅ ${j.applied} novo(s) de ${j.finished} encerrado(s)` +
+                  (j.unmatched?.length ? ` · ${j.unmatched.length} não casaram` : "")
+                );
+              }
+            } catch (e) {
+              setEspnMsg(`⚠️ ${(e as Error).message}`);
+            }
+            setEspnSyncing(false);
+            setTimeout(() => setEspnMsg(""), 8000);
+          }}
+          disabled={espnSyncing}
+          style={{
+            padding: "7px 12px", borderRadius: 7, fontSize: 11, fontWeight: 700,
+            border: "1px solid rgba(80,160,255,0.4)", background: "rgba(80,160,255,0.12)",
+            color: "#5aa0ff", cursor: "pointer", whiteSpace: "nowrap",
+          }}
+        >
+          {espnSyncing ? "⏳..." : "🔄 Sincronizar agora"}
+        </button>
+      </div>
+
       {/* Banner de sincronização */}
       <div style={{
         padding: "10px 14px", borderRadius: 10,
@@ -465,8 +512,8 @@ function TabResultados() {
 
       <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
         Informe o resultado de cada jogo. O sistema calcula os pontos automaticamente.
-        Ausência: 2 jogos seguidos sem palpite são carência; do{" "}
-        <strong style={{ color: "var(--danger)" }}>3º consecutivo</strong> em diante,{" "}
+        Ausência: 4 jogos seguidos sem palpite são carência; do{" "}
+        <strong style={{ color: "var(--danger)" }}>5º consecutivo</strong> em diante,{" "}
         <strong style={{ color: "var(--danger)" }}>−3 pts</strong> por jogo (palpitar zera a carência).
       </p>
       {allMatches.map((m) => {
@@ -518,7 +565,7 @@ function TabResultados() {
                   // Palpites reais deste jogo, de todos os participantes (Supabase)
                   const allGuesses = await loadAllGuesses();
                   saveResultAndCalcPts(m.id, draft, participantes, adminGrupoId ?? "", allGuesses[m.id] ?? {}, m.phase, !!m.training);
-                  // Recalcula TODOS os pontos com a regra de ausência sequencial (carência de 2)
+                  // Recalcula TODOS os pontos com a regra de ausência sequencial (carência de 4)
                   if (!m.training) recalcAllMatchPts(participantes, allGuesses);
                   // Grava no Supabase (em background)
                   upsertOfficialResult(m.id, draft.sa, draft.sb);

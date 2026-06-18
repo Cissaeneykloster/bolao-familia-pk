@@ -31,6 +31,29 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## Sync automático de resultados da Copa (ESPN)
+
+Os placares oficiais são preenchidos automaticamente a partir do scoreboard
+público da ESPN (JSON, **sem chave de API**). O admin continua no controle:
+revisa no painel e ajusta o que quiser — o sync **nunca sobrescreve** um placar
+já existente, então as correções do admin prevalecem.
+
+- **Endpoint:** `GET /api/sync-results` busca os jogos encerrados na ESPN, casa
+  com os jogos do app (de-para por código FIFA em `lib/results-api.ts`, com
+  reorientação mandante/visitante), grava em `official_results` **apenas os que
+  faltam** e recalcula `match_pts` com a mesma regra do admin (`computeMatchPts`).
+  Jogos não-casados voltam em `unmatched` (úteis para refinar o de-para).
+- **Disparo:** Vercel Cron (`vercel.json`) **1x/dia** (13:00 UTC) — o plano
+  **Hobby só permite cron diário**. Para frequência **de hora em hora** sem o Pro,
+  configure um **cron externo grátis** (ex.: [cron-job.org](https://cron-job.org))
+  chamando `GET https://<seu-dominio>/api/sync-results` a cada hora. O admin
+  também pode disparar sob demanda pelo botão **🔄 Sincronizar agora** na aba
+  Resultados.
+- **Variáveis de ambiente (Vercel → Project Settings → Environment Variables):**
+  - `NEXT_PUBLIC_SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (ou
+    `NEXT_PUBLIC_SUPABASE_ANON_KEY`) — acesso ao banco
+  - `ESPN_SCOREBOARD_URL` — opcional; sobrescreve a URL da fonte ESPN
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.

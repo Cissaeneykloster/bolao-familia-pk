@@ -328,18 +328,20 @@ export function RegulamentoScreen() {
       <Secao titulo="9. Ausência de Palpites (penalidade)">
         <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>
           Jogos finalizados <strong>consecutivos</strong> sem palpite têm carência: os{" "}
-          <strong>2 primeiros</strong> não tiram pontos. A partir do{" "}
-          <strong style={{ color: "var(--danger)" }}>3º jogo seguido sem palpite</strong> você perde{" "}
+          <strong>4 primeiros</strong> não tiram pontos. A partir do{" "}
+          <strong style={{ color: "var(--danger)" }}>5º jogo seguido sem palpite</strong> você perde{" "}
           <strong style={{ color: "var(--danger)" }}>−3 pts</strong> por jogo. Assim que voltar a palpitar,
-          a contagem zera e a carência de 2 recomeça.
+          a contagem zera e a carência de 4 recomeça.
         </p>
         <Exemplo
           titulo="Sequência de jogos finalizados sem palpite"
           linhas={[
             { icon: "🆗", texto: "1º jogo seguido sem palpite (carência)", pts: "0" },
             { icon: "🆗", texto: "2º jogo seguido sem palpite (carência)", pts: "0" },
-            { icon: "❌", texto: "3º jogo seguido sem palpite", pts: "−3" },
-            { icon: "❌", texto: "4º jogo seguido sem palpite", pts: "−3" },
+            { icon: "🆗", texto: "3º jogo seguido sem palpite (carência)", pts: "0" },
+            { icon: "🆗", texto: "4º jogo seguido sem palpite (carência)", pts: "0" },
+            { icon: "❌", texto: "5º jogo seguido sem palpite", pts: "−3" },
+            { icon: "❌", texto: "6º jogo seguido sem palpite", pts: "−3" },
             { icon: "✅", texto: "Palpitou de novo → zera a contagem", pts: "—" },
           ]}
         />

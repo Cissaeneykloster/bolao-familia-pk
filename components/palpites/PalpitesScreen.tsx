@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useBolao } from "@/lib/store";
-import { mScore } from "@/lib/scoring";
+import { mScore, breakdown } from "@/lib/scoring";
 import { GROUPS } from "@/lib/mock-data";
 import { PlacarInput } from "./PlacarInput";
 import { Breakdown } from "./Breakdown";
@@ -94,9 +94,11 @@ export function PalpitesScreen() {
 
   // Todos ordenados por data/hora
   const sortedMatches = [...matches].sort((a, b) => (a.kickoff ?? 0) - (b.kickoff ?? 0));
-  const upcoming = sortedMatches.filter((m) => m.status === "upcoming" && !m.training);
-  const training = sortedMatches.filter((m) => m.training);
-  const finished = sortedMatches.filter((m) => m.status === "finished" && !m.training);
+  // Jogos COM resultado oficial → tabela de pontos por jogo (sempre visível)
+  const comResultado = sortedMatches.filter((m) => officialResults[m.id]);
+  // Editáveis (ainda sem resultado) — ficam atrás da trava das previsões
+  const upcoming = sortedMatches.filter((m) => m.status === "upcoming" && !m.training && !officialResults[m.id]);
+  const training = sortedMatches.filter((m) => m.training && !officialResults[m.id]);
 
   return (
     <div className="animate-screen-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -163,235 +165,166 @@ export function PalpitesScreen() {
         </button>
       </div>
 
-      {/* ── Aviso de trava — só aparece quando não veio do botão Palpite ── */}
-      {tab === "jogos" && !predLocked && previsoes < 12 && !bypassGate && (
-        <div style={{
-          padding: "14px 16px", borderRadius: "var(--radius)",
-          background: "rgba(255,90,90,0.08)", border: "1px solid rgba(255,90,90,0.3)",
-          textAlign: "center",
-        }}>
-          <p style={{ fontSize: 14, color: "var(--danger)", fontWeight: 700, margin: "0 0 6px" }}>
-            {t.palpitesBloqueados}
-          </p>
-          <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-            {t.preenchaGruposRestantes(12 - previsoes)}
-          </p>
-          <button
-            onClick={() => setTab("grupos")}
-            style={{
-              marginTop: 10, padding: "8px 20px", borderRadius: 8,
-              border: "none", background: "var(--warn)", color: "#000",
-              cursor: "pointer", fontWeight: 700, fontSize: 13,
-            }}
-          >
-            {t.irParaPrevisao}
-          </button>
-        </div>
-      )}
-
       {/* ── Aba: Previsão dos grupos ── */}
       {tab === "grupos" && <PrevisaoGrupos />}
 
       {/* ── Aba: Palpites dos jogos ── */}
-      {tab === "jogos" && (predLocked || previsoes >= 12 || bypassGate) && (
+      {tab === "jogos" && (
         <>
-          {/* Anel de progresso */}
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ position: "relative", width: 52, height: 52, flexShrink: 0 }}>
-              <svg width="52" height="52" viewBox="0 0 52 52">
-                <circle cx="26" cy="26" r="20" fill="none" stroke="var(--border)" strokeWidth="5" />
-                <circle cx="26" cy="26" r="20" fill="none" stroke="var(--neon)" strokeWidth="5"
-                  strokeDasharray={`${2 * Math.PI * 20}`}
-                  strokeDashoffset={`${2 * Math.PI * 20 * (1 - pct / 100)}`}
-                  strokeLinecap="round" transform="rotate(-90 26 26)"
-                  style={{ transition: "stroke-dashoffset 0.5s ease" }}
-                />
-              </svg>
-              <span className="font-bebas" style={{
-                position: "absolute", inset: 0, display: "flex", alignItems: "center",
-                justifyContent: "center", fontSize: 14, color: "var(--neon)",
-              }}>{pct}%</span>
-            </div>
-            <div>
-              <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-                {apostados} {t.de} {copaMatches.length} {t.jogosApostados}
-              </p>
-            </div>
-          </div>
-
-          {/* Amistosos de treino */}
-          {training.length > 0 && (
-            <section>
-              <h3 style={{
-                fontSize: 11, fontWeight: 700, color: "var(--warn)",
-                letterSpacing: 1, marginBottom: 8, textTransform: "uppercase",
-              }}>
-                {t.treinoNaoContaRanking}
-              </h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {training.map((m) => {
-                  const official = officialResults[m.id];
-                  // Se tem resultado oficial → mostra breakdown, não o input
-                  if (official) {
-                    const g = guesses[m.id];
-                    return (
-                      <div key={m.id} style={{
-                        background: "var(--bg-2)", borderRadius: "var(--radius)",
-                        border: "1px solid rgba(0,255,135,0.2)", padding: 14,
-                        display: "flex", flexDirection: "column", gap: 8,
-                      }}>
-                        {/* Cabeçalho */}
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontSize: 12, color: "var(--text)", fontWeight: 600 }}>
-                            {m.a.flag} {countryName(m.a.name, lang)}
-                          </span>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <span className="font-bebas" style={{ fontSize: 22, color: "var(--neon)" }}>
-                              {official.sa} × {official.sb}
-                            </span>
-                            <span style={{ fontSize: 10, color: "var(--muted)", background: "var(--border)", padding: "2px 6px", borderRadius: 8 }}>
-                              {t.treinoEncerrado}
-                            </span>
-                          </div>
-                          <span style={{ fontSize: 12, color: "var(--text)", fontWeight: 600 }}>
-                            {countryName(m.b.name, lang)} {m.b.flag}
-                          </span>
-                        </div>
-                        {/* Resultado */}
-                        {g ? (
-                          <>
-                            {/* Total de pontos em destaque */}
-                            {(() => {
-                              const { breakdown: bkd } = require("@/lib/scoring");
-                              const bd = bkd({ sa: official.sa, sb: official.sb }, { a: g.a, b: g.b });
-                              return (
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                                  <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
-                                    {t.seuPalpite} <strong style={{ color: "var(--text)" }}>{g.a} × {g.b}</strong>
-                                  </p>
-                                  <span style={{
-                                    fontSize: 15, fontWeight: 700, padding: "4px 12px", borderRadius: 10,
-                                    background: bd.total >= 20 ? "rgba(255,215,0,0.15)" : bd.total > 0 ? "var(--neon-soft)" : "rgba(255,90,90,0.1)",
-                                    color: bd.total >= 20 ? "var(--gold)" : bd.total > 0 ? "var(--neon)" : "var(--danger)",
-                                  }}>
-                                    {bd.total >= 20 ? "🎯 " : bd.total > 0 ? "⚡ " : ""}{bd.total > 0 ? `+${bd.total} pts` : "0 pts"}
-                                  </span>
-                                </div>
-                              );
-                            })()}
-                            <Breakdown actual={{ sa: official.sa, sb: official.sb }} guess={g} compact />
-                          </>
-                        ) : (
-                          <p style={{ fontSize: 12, color: "var(--danger)", fontStyle: "italic" }}>
-                            {t.semPalpiteTreino}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  }
-                  // Sem resultado → input normal
-                  return (
-                    <div key={m.id} ref={(el) => { matchRefs.current[m.id] = el; }}>
-                      <PlacarInput match={m} onSaved={() => handleSaved(m.id)} />
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
-          {/* Copa — próximos */}
-          {upcoming.length > 0 && (
+          {/* ── Resultados (pontos por jogo) — SEMPRE visível p/ jogos com resultado oficial ── */}
+          {comResultado.length > 0 && (
             <section>
               <h3 style={{
                 fontSize: 11, fontWeight: 700, color: "var(--muted)",
                 letterSpacing: 1, marginBottom: 8, textTransform: "uppercase",
               }}>
-                {t.disponiveis}
+                {lang === "en" ? "Results — points per match" : "Resultados — pontos por jogo"}
               </h3>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {upcoming.map((m) => (
-                  <div key={m.id} ref={(el) => { matchRefs.current[m.id] = el; }}>
-                    <PlacarInput match={m} onSaved={() => handleSaved(m.id)} />
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Copa — encerrados */}
-          {finished.length > 0 && (
-            <section>
-              <h3 style={{
-                fontSize: 11, fontWeight: 700, color: "var(--muted)",
-                letterSpacing: 1, marginBottom: 8, textTransform: "uppercase",
-              }}>
-                {t.encerrados}
-              </h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {finished.map((m) => {
+                {comResultado.map((m) => {
+                  const official = officialResults[m.id]!;
                   const g = guesses[m.id];
-                  const actual = mScore(m, resultFix);
-                  const [expanded, setExpanded] = useState(false);
+                  const bd = g ? breakdown({ sa: official.sa, sb: official.sb }, { a: g.a, b: g.b }, m.phase) : null;
                   return (
                     <div key={m.id} style={{
                       background: "var(--bg-2)", borderRadius: "var(--radius)",
-                      border: "1px solid var(--border)", overflow: "hidden",
+                      border: "1px solid rgba(0,255,135,0.2)", padding: 14,
+                      display: "flex", flexDirection: "column", gap: 8,
                     }}>
-                      {/* Linha compacta — tudo em uma única linha */}
-                      <button
-                        onClick={() => setExpanded(!expanded)}
-                        style={{
-                          width: "100%", background: "none", border: "none", cursor: "pointer",
-                          padding: "8px 12px",
-                          display: "flex", alignItems: "center", gap: 8,
-                        }}
-                      >
-                        <span style={{ fontSize: 13, color: "var(--muted)", whiteSpace: "nowrap" }}>
-                          {t.encerrado}
-                        </span>
-                        <span style={{ fontSize: 12, color: "var(--text)", flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {/* Cabeçalho */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 12, color: "var(--text)", fontWeight: 600 }}>
                           {m.a.flag} {countryName(m.a.name, lang)}
                         </span>
-                        <span className="font-bebas" style={{ fontSize: 18, color: "var(--neon)", flexShrink: 0 }}>
-                          {actual.sa} × {actual.sb}
-                        </span>
-                        <span style={{ fontSize: 12, color: "var(--text)", flex: 1, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span className="font-bebas" style={{ fontSize: 22, color: "var(--neon)" }}>
+                            {official.sa} × {official.sb}
+                          </span>
+                          <span style={{ fontSize: 10, color: "var(--muted)", background: "var(--border)", padding: "2px 6px", borderRadius: 8 }}>
+                            {m.training ? t.treinoEncerrado : t.encerrado}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: 12, color: "var(--text)", fontWeight: 600 }}>
                           {countryName(m.b.name, lang)} {m.b.flag}
                         </span>
-                        {g ? (
-                          <span style={{ fontSize: 11, color: "var(--ok)", flexShrink: 0 }}>
-                            {g.a}×{g.b} ▾
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: 11, color: "var(--danger)", flexShrink: 0 }}>
-                            −3pts ▾
-                          </span>
-                        )}
-                      </button>
-
-                      {/* Detalhe expandido */}
-                      {expanded && (
-                        <div style={{ padding: "0 12px 12px", borderTop: "1px solid var(--border)" }}>
-                          {g ? (
-                            <>
-                              <p style={{ fontSize: 12, color: "var(--muted)", margin: "8px 0 6px" }}>
-                                {t.voceApostou} <strong style={{ color: "var(--text)" }}>{g.a} × {g.b}</strong>
-                              </p>
-                              <Breakdown actual={actual} guess={g} compact />
-                            </>
-                          ) : (
-                            <p style={{ fontSize: 12, color: "var(--danger)", margin: "8px 0 0", fontStyle: "italic" }}>
-                              {t.semPalpiteJogo}
+                      </div>
+                      {/* Breakdown dos acertos por critério */}
+                      {g && bd ? (
+                        <>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                            <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
+                              {t.seuPalpite} <strong style={{ color: "var(--text)" }}>{g.a} × {g.b}</strong>
                             </p>
-                          )}
-                        </div>
+                            <span style={{
+                              fontSize: 15, fontWeight: 700, padding: "4px 12px", borderRadius: 10,
+                              background: bd.total >= 20 ? "rgba(255,215,0,0.15)" : bd.total > 0 ? "var(--neon-soft)" : "rgba(255,90,90,0.1)",
+                              color: bd.total >= 20 ? "var(--gold)" : bd.total > 0 ? "var(--neon)" : "var(--danger)",
+                            }}>
+                              {bd.total >= 20 ? "🎯 " : bd.total > 0 ? "⚡ " : ""}{bd.total > 0 ? `+${bd.total} pts` : "0 pts"}
+                            </span>
+                          </div>
+                          <Breakdown actual={{ sa: official.sa, sb: official.sb }} guess={g} compact />
+                        </>
+                      ) : (
+                        <p style={{ fontSize: 12, color: "var(--danger)", fontStyle: "italic" }}>
+                          {m.training ? t.semPalpiteTreino : t.semPalpiteJogo}
+                        </p>
                       )}
                     </div>
                   );
                 })}
               </div>
             </section>
+          )}
+
+          {/* ── Edição de palpites — atrás da trava das previsões ── */}
+          {predLocked || previsoes >= 12 || bypassGate ? (
+            <>
+              {/* Anel de progresso */}
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <div style={{ position: "relative", width: 52, height: 52, flexShrink: 0 }}>
+                  <svg width="52" height="52" viewBox="0 0 52 52">
+                    <circle cx="26" cy="26" r="20" fill="none" stroke="var(--border)" strokeWidth="5" />
+                    <circle cx="26" cy="26" r="20" fill="none" stroke="var(--neon)" strokeWidth="5"
+                      strokeDasharray={`${2 * Math.PI * 20}`}
+                      strokeDashoffset={`${2 * Math.PI * 20 * (1 - pct / 100)}`}
+                      strokeLinecap="round" transform="rotate(-90 26 26)"
+                      style={{ transition: "stroke-dashoffset 0.5s ease" }}
+                    />
+                  </svg>
+                  <span className="font-bebas" style={{
+                    position: "absolute", inset: 0, display: "flex", alignItems: "center",
+                    justifyContent: "center", fontSize: 14, color: "var(--neon)",
+                  }}>{pct}%</span>
+                </div>
+                <div>
+                  <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+                    {apostados} {t.de} {copaMatches.length} {t.jogosApostados}
+                  </p>
+                </div>
+              </div>
+
+              {/* Amistosos de treino (ainda sem resultado) */}
+              {training.length > 0 && (
+                <section>
+                  <h3 style={{
+                    fontSize: 11, fontWeight: 700, color: "var(--warn)",
+                    letterSpacing: 1, marginBottom: 8, textTransform: "uppercase",
+                  }}>
+                    {t.treinoNaoContaRanking}
+                  </h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {training.map((m) => (
+                      <div key={m.id} ref={(el) => { matchRefs.current[m.id] = el; }}>
+                        <PlacarInput match={m} onSaved={() => handleSaved(m.id)} />
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Copa — próximos */}
+              {upcoming.length > 0 && (
+                <section>
+                  <h3 style={{
+                    fontSize: 11, fontWeight: 700, color: "var(--muted)",
+                    letterSpacing: 1, marginBottom: 8, textTransform: "uppercase",
+                  }}>
+                    {t.disponiveis}
+                  </h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {upcoming.map((m) => (
+                      <div key={m.id} ref={(el) => { matchRefs.current[m.id] = el; }}>
+                        <PlacarInput match={m} onSaved={() => handleSaved(m.id)} />
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </>
+          ) : (
+            <div style={{
+              padding: "14px 16px", borderRadius: "var(--radius)",
+              background: "rgba(255,90,90,0.08)", border: "1px solid rgba(255,90,90,0.3)",
+              textAlign: "center",
+            }}>
+              <p style={{ fontSize: 14, color: "var(--danger)", fontWeight: 700, margin: "0 0 6px" }}>
+                {t.palpitesBloqueados}
+              </p>
+              <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+                {t.preenchaGruposRestantes(12 - previsoes)}
+              </p>
+              <button
+                onClick={() => setTab("grupos")}
+                style={{
+                  marginTop: 10, padding: "8px 20px", borderRadius: 8,
+                  border: "none", background: "var(--warn)", color: "#000",
+                  cursor: "pointer", fontWeight: 700, fontSize: 13,
+                }}
+              >
+                {t.irParaPrevisao}
+              </button>
+            </div>
           )}
         </>
       )}
