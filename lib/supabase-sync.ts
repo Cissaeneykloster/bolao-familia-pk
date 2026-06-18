@@ -205,7 +205,7 @@ export async function loadMyChallengeDone(apelido: string, dateBrt: string): Pro
   return data ? data.done : null;
 }
 
-/** Marca o desafio do dia do participante (done → +pts, não feito → −pts) */
+/** Marca o desafio do dia do participante (done → +pts, não feito → 0, não desconta) */
 export async function upsertChallengeDone(
   apelido: string, grupoId: string, dateBrt: string, done: boolean, pts: number,
 ) {

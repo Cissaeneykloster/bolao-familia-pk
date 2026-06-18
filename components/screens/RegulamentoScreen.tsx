@@ -231,11 +231,11 @@ export function RegulamentoScreen() {
         <div>
           <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>📋 Categorias e códigos:</p>
           <Tabela rows={[
-            ["1.1 a 1.4", "🛏️ Quarto (±3 pts)"],
-            ["2.1 a 2.4", "🏠 Casa (±3 pts)"],
-            ["3.1 a 3.4", "❤️ Serviço (±5 pts)"],
-            ["4.1 a 4.4", "📚 Intelectual (±4 pts)"],
-            ["5.1 a 5.4", "💧 Saúde (±3 pts)"],
+            ["1.1 a 1.4", "🛏️ Quarto (+3 pts)"],
+            ["2.1 a 2.4", "🏠 Casa (+3 pts)"],
+            ["3.1 a 3.4", "❤️ Serviço (+5 pts)"],
+            ["4.1 a 4.4", "📚 Intelectual (+4 pts)"],
+            ["5.1 a 5.4", "💧 Saúde (+3 pts)"],
           ]} />
         </div>
 
@@ -251,7 +251,7 @@ export function RegulamentoScreen() {
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {[
             "🎲 Às 07h o sistema sorteia 1 desafio para o grupo — todos veem o mesmo",
-            "✅ Marque 'Fiz!' → ganha os pontos · ❌ 'Não fiz' → perde os pontos",
+            "✅ Marque 'Fiz!' → ganha os pontos · ❌ 'Não fiz' → 0 pts (não desconta)",
             "🏅 Os pontos dos desafios entram no ranking geral",
             "📸 Tire foto e poste no grupo do WhatsApp como comprovação",
             "🔄 O sorteio pode repetir desafios — tudo bem!",
@@ -264,11 +264,11 @@ export function RegulamentoScreen() {
         </div>
 
         <Exemplo
-          titulo="Desafio 3.2 — Preparar o almoço ou jantar (Serviço ±5)"
+          titulo="Desafio 3.2 — Preparar o almoço ou jantar (Serviço +5)"
           linhas={[
             { icon: "🎲", texto: "Sorteado: código 3.2 — Preparar o almoço ou jantar" },
             { icon: "✅", texto: "Você fez e marcou no app", pts: "+5 pts" },
-            { icon: "❌", texto: "Não fez (ou não marcou a tempo)", pts: "−5 pts" },
+            { icon: "❌", texto: "Não fez (ou não marcou a tempo)", pts: "0 pts" },
           ]}
         />
       </Secao>
