@@ -24,7 +24,8 @@ export default function EntrarPage() {
 
     // Salva grupo e apelido no store (persiste no localStorage)
     setCurrentGrupo(grupo.id);
-    if (apelido) setCurrentUserApelido(decodeURIComponent(apelido));
+    // trim: o apelido canônico é resolvido contra os participantes no sync
+    if (apelido) setCurrentUserApelido(decodeURIComponent(apelido).trim());
 
     setFase("welcome");
 

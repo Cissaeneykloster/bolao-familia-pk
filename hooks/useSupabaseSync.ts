@@ -10,6 +10,7 @@ import {
   loadDailyDraw, insertDailyDraw, loadChallengePts, loadMyChallengeDone,
 } from "@/lib/supabase-sync";
 import { MATCHES } from "@/lib/mock-data";
+import { canonicalApelido } from "@/lib/players";
 import { rollDailyChallenge, todayBrasilia, isDrawTime } from "@/lib/daily";
 import { getDesafioCatsForGroup } from "@/lib/useDesafios";
 
@@ -29,6 +30,7 @@ export function useSupabaseSync() {
     setChallengePts,
     mergeGuesses,
     mergeGroupPredictions,
+    setCurrentUserApelido,
     currentUserApelido,
   } = useBolao();
 
@@ -93,6 +95,19 @@ export function useSupabaseSync() {
       const parts = await loadParticipantes();
       if (parts.length > 0) setParticipantes(parts);
 
+      // Canoniza o apelido logado contra o cadastro (ignora acento/maiúscula/
+      // espaço). Garante que palpites sejam lidos/gravados com a MESMA grafia
+      // do participante — senão o ranking não casa (ex.: "Raíssa" × "Raissa").
+      let meApelido = currentUserApelido;
+      if (meApelido && parts.length > 0) {
+        const canon = canonicalApelido(meApelido, parts);
+        if (canon !== meApelido) {
+          console.log(`[SB] apelido canonizado: "${meApelido}" → "${canon}"`);
+          setCurrentUserApelido(canon);
+          meApelido = canon;
+        }
+      }
+
       // Carrega resultados oficiais
       const results = await loadOfficialResults();
       setOfficialResults(results); // sempre sobrescreve (dados do servidor são autoritativos)
@@ -105,20 +120,20 @@ export function useSupabaseSync() {
       setAdminDeltas(await loadAdminDeltas());
 
       // Carrega palpites e previsões do usuário atual (se identificado)
-      if (currentUserApelido) {
+      if (meApelido) {
         // Snapshot do que existe só neste aparelho, antes do merge
         const localGuesses = { ...useBolao.getState().guesses };
         const localPreds = { ...useBolao.getState().groupPredictions };
         const localPredsSaved = useBolao.getState().groupPredictionsSaved;
 
-        const guesses = await loadGuesses(currentUserApelido);
+        const guesses = await loadGuesses(meApelido);
         if (Object.keys(guesses).length > 0) mergeGuesses(guesses);
 
         // Recupera para o servidor os palpites feitos antes da persistência
-        const recovered = await backfillGuesses(currentUserApelido, localGuesses, guesses);
+        const recovered = await backfillGuesses(meApelido, localGuesses, guesses);
         if (recovered > 0) console.log(`[SB] backfill: ${recovered} palpite(s) recuperado(s)`);
 
-        const { predictions, saved } = await loadGroupPredictions(currentUserApelido);
+        const { predictions, saved } = await loadGroupPredictions(meApelido);
         if (Object.keys(predictions).length > 0) mergeGroupPredictions(predictions, saved);
 
         // Recupera previsões locais que o servidor ainda não tem
@@ -126,7 +141,7 @@ export function useSupabaseSync() {
           Object.entries(localPreds).filter(([g]) => !(g in predictions))
         );
         if (Object.keys(missingPreds).length > 0) {
-          await upsertGroupPredictions(currentUserApelido, missingPreds, localPredsSaved || saved);
+          await upsertGroupPredictions(meApelido, missingPreds, localPredsSaved || saved);
         }
       }
     }
