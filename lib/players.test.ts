@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { participantesToPlayers } from "./players";
+import { participantesToPlayers, apelidoKey, canonicalApelido } from "./players";
 import { effPts } from "./scoring";
 import type { Participante } from "./mock-data";
 
@@ -24,5 +24,28 @@ describe("participantesToPlayers", () => {
     const inativo: Participante = { ...part("Ze"), ativo: false };
     const players = participantesToPlayers([part("Ney"), inativo], { Ney: 10, Ze: 99 });
     expect(players.map((p) => p.name)).toEqual(["Ney"]);
+  });
+});
+
+describe("apelidoKey — normaliza para comparação", () => {
+  it("ignora acento, maiúscula e espaços nas pontas", () => {
+    expect(apelidoKey("Raíssa")).toBe(apelidoKey("Raissa"));
+    expect(apelidoKey("Marcella")).toBe(apelidoKey("marcella"));
+    expect(apelidoKey("  JPPK  ")).toBe(apelidoKey("JPPK"));
+    expect(apelidoKey("Helô")).toBe("helo");
+  });
+});
+
+describe("canonicalApelido — resolve para a grafia cadastrada", () => {
+  const parts = [part("Raissa"), part("marcella"), part("JPPK")];
+
+  it("devolve a grafia canônica do participante (acento/maiúscula)", () => {
+    expect(canonicalApelido("Raíssa", parts)).toBe("Raissa");
+    expect(canonicalApelido("Marcella", parts)).toBe("marcella");
+    expect(canonicalApelido(" jppk ", parts)).toBe("JPPK");
+  });
+
+  it("sem correspondência, devolve o apelido só com trim", () => {
+    expect(canonicalApelido("  Novato  ", parts)).toBe("Novato");
   });
 });
