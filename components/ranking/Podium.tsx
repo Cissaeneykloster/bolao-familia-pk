@@ -1,11 +1,47 @@
 "use client";
 
+import { useState, type CSSProperties } from "react";
 import { motion } from "framer-motion";
 import { useBolao } from "@/lib/store";
 import { rankWithEff, bonusPts, effPts } from "@/lib/scoring";
 import { useDesafioCats } from "@/lib/useDesafios";
 import { participantesToPlayers } from "@/lib/players";
+import { PointsBreakdown } from "./PointsBreakdown";
 import type { Player } from "@/lib/types";
+
+// Nome do pódio: ao clicar, abre um popover com a origem dos pontos.
+function PodiumName({ name, color, wrapStyle, btnStyle }: {
+  name: string; color: string; wrapStyle?: CSSProperties; btnStyle?: CSSProperties;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: "relative", ...wrapStyle }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-label={`Detalhar pontos de ${name}`}
+        style={{
+          background: "none", border: "none", cursor: "pointer", padding: 0,
+          color: "var(--text)", fontWeight: 600, maxWidth: "100%",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          textDecoration: "underline dotted", textUnderlineOffset: 2,
+          ...btnStyle,
+        }}
+      >
+        {name}
+      </button>
+      {open && (
+        <div style={{
+          position: "absolute", left: "50%", transform: "translateX(-50%)",
+          bottom: "calc(100% + 6px)", zIndex: 20, width: 190,
+          background: "var(--card)", border: `1px solid ${color}66`, borderRadius: 10,
+          padding: "8px 12px", boxShadow: "0 6px 20px rgba(0,0,0,0.45)",
+        }}>
+          <PointsBreakdown name={name} />
+        </div>
+      )}
+    </div>
+  );
+}
 
 const PODIUM_CFG = {
   1: { color: "var(--gold)",   shadow: "0 0 24px var(--gold)",   h: 104, order: 2, size: 72, delay: 0.1 },
@@ -58,9 +94,7 @@ function PodiumA({ top3, adminDelta, bonus }: { top3: Player[]; adminDelta: Reco
           >
             {pos === 1 && <span style={{ fontSize: 20 }}>👑</span>}
             <Avatar player={p} size={cfg.size} border={cfg.color} shadow={cfg.shadow} />
-            <span style={{ fontSize: 11, color: "var(--text)", fontWeight: 600, maxWidth: 70, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {p.name}
-            </span>
+            <PodiumName name={p.name} color={cfg.color} btnStyle={{ fontSize: 11, maxWidth: 70, textAlign: "center" }} />
             <motion.span
               className="font-bebas"
               initial={{ scale: 0 }}
@@ -99,7 +133,7 @@ function PodiumB({ top3, adminDelta, bonus }: { top3: Player[]; adminDelta: Reco
           }}>
             <span className="font-bebas" style={{ fontSize: 28, color: cfg.color }}>{pos}</span>
             <Avatar player={p} size={44} border={cfg.color} shadow={cfg.shadow} />
-            <span style={{ fontSize: 11, color: "var(--text)", textAlign: "center", fontWeight: 600 }}>{p.name}</span>
+            <PodiumName name={p.name} color={cfg.color} btnStyle={{ fontSize: 11, textAlign: "center" }} />
             <span className="font-bebas" style={{ fontSize: 18, color: cfg.color }}>
               {effPts(p, adminDelta, bonus)} pts
             </span>
@@ -125,7 +159,7 @@ function PodiumC({ top3, adminDelta, bonus }: { top3: Player[]; adminDelta: Reco
           }}>
             <span className="font-bebas" style={{ fontSize: 28, color: cfg.color, width: 24 }}>{pos}</span>
             <Avatar player={p} size={36} border={cfg.color} shadow={cfg.shadow} />
-            <span style={{ flex: 1, color: "var(--text)", fontWeight: 600, fontSize: 14 }}>{p.name}</span>
+            <PodiumName name={p.name} color={cfg.color} wrapStyle={{ flex: 1 }} btnStyle={{ fontSize: 14, textAlign: "left" }} />
             <span className="font-bebas" style={{ fontSize: 22, color: cfg.color }}>
               {effPts(p, adminDelta, bonus)}
             </span>

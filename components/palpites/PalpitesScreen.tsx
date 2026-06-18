@@ -94,11 +94,10 @@ export function PalpitesScreen() {
 
   // Todos ordenados por data/hora
   const sortedMatches = [...matches].sort((a, b) => (a.kickoff ?? 0) - (b.kickoff ?? 0));
-  // Jogos COM resultado oficial → tabela de pontos por jogo (sempre visível)
-  const comResultado = sortedMatches.filter((m) => officialResults[m.id]);
+  // Jogos COM resultado oficial → tabela de pontos por jogo (sempre visível; treinos não entram)
+  const comResultado = sortedMatches.filter((m) => officialResults[m.id] && !m.training);
   // Editáveis (ainda sem resultado) — ficam atrás da trava das previsões
   const upcoming = sortedMatches.filter((m) => m.status === "upcoming" && !m.training && !officialResults[m.id]);
-  const training = sortedMatches.filter((m) => m.training && !officialResults[m.id]);
 
   return (
     <div className="animate-screen-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -201,7 +200,7 @@ export function PalpitesScreen() {
                             {official.sa} × {official.sb}
                           </span>
                           <span style={{ fontSize: 10, color: "var(--muted)", background: "var(--border)", padding: "2px 6px", borderRadius: 8 }}>
-                            {m.training ? t.treinoEncerrado : t.encerrado}
+                            {t.encerrado}
                           </span>
                         </div>
                         <span style={{ fontSize: 12, color: "var(--text)", fontWeight: 600 }}>
@@ -227,7 +226,7 @@ export function PalpitesScreen() {
                         </>
                       ) : (
                         <p style={{ fontSize: 12, color: "var(--danger)", fontStyle: "italic" }}>
-                          {m.training ? t.semPalpiteTreino : t.semPalpiteJogo}
+                          {t.semPalpiteJogo}
                         </p>
                       )}
                     </div>
@@ -263,25 +262,6 @@ export function PalpitesScreen() {
                   </p>
                 </div>
               </div>
-
-              {/* Amistosos de treino (ainda sem resultado) */}
-              {training.length > 0 && (
-                <section>
-                  <h3 style={{
-                    fontSize: 11, fontWeight: 700, color: "var(--warn)",
-                    letterSpacing: 1, marginBottom: 8, textTransform: "uppercase",
-                  }}>
-                    {t.treinoNaoContaRanking}
-                  </h3>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {training.map((m) => (
-                      <div key={m.id} ref={(el) => { matchRefs.current[m.id] = el; }}>
-                        <PlacarInput match={m} onSaved={() => handleSaved(m.id)} />
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
 
               {/* Copa — próximos */}
               {upcoming.length > 0 && (
