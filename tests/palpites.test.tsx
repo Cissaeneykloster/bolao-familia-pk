@@ -1,6 +1,16 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+// Supabase mockado: o upsert do palpite "confirma" sem rede (error: null)
+vi.mock("@/lib/supabase", () => ({
+  supabase: {
+    from: () => ({
+      upsert: () => Promise.resolve({ data: null, error: null }),
+    }),
+  },
+}));
+
 import { useBolao } from "@/lib/store";
 import { PlacarInput } from "@/components/palpites/PlacarInput";
 import { Breakdown } from "@/components/palpites/Breakdown";
@@ -15,7 +25,7 @@ const upcoming: Match = {
 };
 
 beforeEach(() => {
-  useBolao.setState({ guesses: {}, palpite: "a" });
+  useBolao.setState({ guesses: {}, palpite: "a", currentUserApelido: null, participantes: [] });
 });
 
 // ── PlacarInput ───────────────────────────────────────────────────
@@ -45,7 +55,7 @@ describe("PlacarInput", () => {
     expect(useBolao.getState().guesses["m4"]?.a ?? 0).toBe(0);
   });
 
-  it("salvar persiste no store e mostra '✅ Salvo!'", async () => {
+  it("salvar persiste no store e confirma o salvamento", async () => {
     const user = userEvent.setup();
     render(<PlacarInput match={upcoming} />);
     const plusBtns = screen.getAllByRole("button", { name: "+" });
@@ -53,7 +63,26 @@ describe("PlacarInput", () => {
     await user.click(plusBtns[1]); // b = 1
     await user.click(screen.getByRole("button", { name: /salvar palpite/i }));
     expect(useBolao.getState().guesses["m4"]).toEqual({ a: 1, b: 1 });
-    expect(screen.getByText(/salvo/i)).toBeInTheDocument();
+    // saveGuess é assíncrono — espera o status real aparecer
+    expect(await screen.findByText(/salvo/i)).toBeInTheDocument();
+  });
+
+  it("sem identificação avisa que ficou só no aparelho", async () => {
+    useBolao.setState({ currentUserApelido: null });
+    const user = userEvent.setup();
+    render(<PlacarInput match={upcoming} />);
+    await user.click(screen.getAllByRole("button", { name: "+" })[0]);
+    await user.click(screen.getByRole("button", { name: /salvar palpite/i }));
+    expect(await screen.findByText(/só neste aparelho/i)).toBeInTheDocument();
+  });
+
+  it("identificado: confirma '✅ Salvo!' (servidor confirmou)", async () => {
+    useBolao.setState({ currentUserApelido: "Nino" });
+    const user = userEvent.setup();
+    render(<PlacarInput match={upcoming} />);
+    await user.click(screen.getAllByRole("button", { name: "+" })[0]);
+    await user.click(screen.getByRole("button", { name: /salvar palpite/i }));
+    expect(await screen.findByText("✅ Salvo!")).toBeInTheDocument();
   });
 
   it("variação vertical (palpite=b) monta sem erro", () => {

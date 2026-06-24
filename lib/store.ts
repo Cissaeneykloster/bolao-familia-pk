@@ -10,8 +10,18 @@ import { upsertGuess, upsertGroupPredictions } from "./supabase-sync";
 import type { DailyDraw } from "./supabase-sync";
 import { breakdown, computeMatchPts, PENALTY_START_MS } from "./scoring";
 import { isMatchLocked, arePredictionsLocked } from "./standings";
+import { canonicalApelido } from "./players";
 
 // ── Tipos do estado ───────────────────────────────────────────────
+
+/**
+ * Resultado de salvar um palpite:
+ * - "saved":   gravado e CONFIRMADO no servidor (Supabase)
+ * - "local":   sem identificação — fica só neste aparelho (localStorage)
+ * - "error":   identificado, mas o servidor não confirmou após as tentativas
+ * - "skipped": nada a salvar (jogo travado ou sem palpite)
+ */
+export type SaveGuessResult = "saved" | "local" | "error" | "skipped";
 
 type StyleGroup = "podium" | "card" | "palpite";
 type StyleVal = "a" | "b" | "c";
@@ -101,7 +111,7 @@ interface BolaoState {
   setCurrentUserApelido: (apelido: string | null) => void;
 
   setGuess: (id: string, side: "a" | "b", dir: 1 | -1) => void;
-  saveGuess: (id: string) => void;
+  saveGuess: (id: string) => Promise<SaveGuessResult>;
 
   // Sincronização Supabase → store
   setParticipantes: (p: Participante[]) => void;
@@ -250,19 +260,40 @@ export const useBolao = create<BolaoState>()(
           return { guesses: { ...state.guesses, [id]: { ...prev, [side]: next } } };
         }),
 
-      saveGuess: (id) => {
+      saveGuess: async (id) => {
         // Partida iniciada → palpite não pode mais ser salvo (regra do bolão)
         const match = get().matches.find((m) => m.id === id);
-        if (match && isMatchLocked(match)) return;
+        if (match && isMatchLocked(match)) return "skipped";
 
-        const { currentUserApelido, guesses } = get();
+        const { currentUserApelido, guesses, participantes } = get();
         const g = guesses[id];
-        // Persiste no Supabase quando o participante está identificado;
-        // sem identificação o palpite fica apenas neste dispositivo
-        if (currentUserApelido && g) {
-          void upsertGuess(currentUserApelido, id, g.a, g.b);
+        if (!g) return "skipped";
+
+        // O palpite já está no store (persistido no localStorage via zustand).
+        // Sem identificação NÃO há como gravar na nuvem — avisa que ficou local.
+        if (!currentUserApelido) return "local";
+
+        // Grava sob a MESMA grafia canônica usada na leitura (ignora acento/
+        // maiúscula/espaço). Sem isto, palpite escrito como "Raíssa" e lido como
+        // "Raissa" "some" do ranking/das telas (ver issue de divergência de apelido).
+        const apelido = canonicalApelido(currentUserApelido, participantes);
+
+        // Retry com backoff — NÃO declara "salvo" sem o servidor confirmar.
+        // Antes, era fire-and-forget (`void upsertGuess`): na falha de rede o
+        // usuário via "✅ Salvo!" e o palpite nunca chegava ao banco.
+        for (let attempt = 0; attempt < 3; attempt++) {
+          let ok = false;
+          try {
+            ok = await upsertGuess(apelido, id, g.a, g.b);
+          } catch {
+            ok = false;
+          }
+          if (ok) return "saved";
+          if (attempt < 2) {
+            await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
+          }
         }
-        set((state) => ({ guesses: { ...state.guesses } }));
+        return "error";
       },
 
       toggleDesafio: (id) =>

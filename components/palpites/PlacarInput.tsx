@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useBolao } from "@/lib/store";
 import { SCORING } from "@/lib/mock-data";
@@ -135,7 +135,7 @@ function Preview({ gA, gB }: { gA: number; gB: number }) {
 
 export function PlacarInput({ match, onSaved }: PlacarInputProps) {
   const { guesses, setGuess, saveGuess, palpite, officialResults } = useBolao();
-  const [saved, setSaved] = useState(false);
+  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "local" | "error">("idle");
   const guess = guesses[match.id] ?? { a: 0, b: 0 };
 
   // Resultado oficial lançado pelo admin → jogo congelado para todos
@@ -144,15 +144,26 @@ export function PlacarInput({ match, onSaved }: PlacarInputProps) {
   const started = isMatchLocked(match);
   const frozen = !!officialResult || started;
 
-  // Reset saved state quando o palpite mudar
-  useEffect(() => { setSaved(false); }, [guess.a, guess.b]);
+  // Mexeu no placar → volta ao estado "não salvo" (evita "✅ Salvo!" desatualizado)
+  const bump = (side: "a" | "b", dir: 1 | -1) => {
+    setGuess(match.id, side, dir);
+    setStatus("idle");
+  };
 
-  const handleSave = () => {
-    if (frozen) return;
-    saveGuess(match.id);
-    setSaved(true);
-    onSaved?.();
-    setTimeout(() => setSaved(false), 2000);
+  const handleSave = async () => {
+    if (frozen || status === "saving") return;
+    setStatus("saving");
+    const res = await saveGuess(match.id);
+    if (res === "saved" || res === "local") {
+      setStatus(res);
+      onSaved?.();
+      setTimeout(() => setStatus("idle"), 2500);
+    } else if (res === "error") {
+      // Mantém o estado de erro até o usuário tentar de novo (sem falso "salvo")
+      setStatus("error");
+    } else {
+      setStatus("idle");
+    }
   };
 
   const size = palpite === "b" ? "vertical" : palpite === "c" ? "minimal" : "large";
@@ -200,8 +211,8 @@ export function PlacarInput({ match, onSaved }: PlacarInputProps) {
           </span>
           <Stepper
             value={guess.a}
-            onInc={() => setGuess(match.id, "a", 1)}
-            onDec={() => setGuess(match.id, "a", -1)}
+            onInc={() => bump("a", 1)}
+            onDec={() => bump("a", -1)}
             disabled={frozen}
             side="a"
             size={size}
@@ -219,8 +230,8 @@ export function PlacarInput({ match, onSaved }: PlacarInputProps) {
           </span>
           <Stepper
             value={guess.b}
-            onInc={() => setGuess(match.id, "b", 1)}
-            onDec={() => setGuess(match.id, "b", -1)}
+            onInc={() => bump("b", 1)}
+            onDec={() => bump("b", -1)}
             disabled={frozen}
             side="b"
             size={size}
@@ -233,27 +244,45 @@ export function PlacarInput({ match, onSaved }: PlacarInputProps) {
 
       {/* Botão salvar */}
       <button
-        aria-label={frozen ? "Palpite congelado" : saved ? "Palpite salvo" : "Salvar palpite"}
+        aria-label={
+          frozen ? "Palpite congelado"
+          : status === "saving" ? "Salvando palpite"
+          : status === "saved" || status === "local" ? "Palpite salvo"
+          : status === "error" ? "Tentar salvar palpite novamente"
+          : "Salvar palpite"
+        }
         onClick={handleSave}
-        disabled={frozen}
+        disabled={frozen || status === "saving"}
         style={{
           width: "100%",
           padding: "12px 0",
           borderRadius: 10,
           border: "none",
-          background: frozen ? "var(--border)" : saved ? "var(--field-light)" : "var(--field)",
-          color: "var(--neon)",
+          background: frozen
+            ? "var(--border)"
+            : status === "error"
+            ? "rgba(255,90,90,0.15)"
+            : status === "saved" || status === "local"
+            ? "var(--field-light)"
+            : "var(--field)",
+          color: status === "error" ? "var(--danger)" : "var(--neon)",
           fontWeight: 700,
           fontSize: 14,
-          cursor: "pointer",
+          cursor: frozen || status === "saving" ? "default" : "pointer",
           transition: "background 0.2s",
           minHeight: 44,
         }}
       >
         {frozen
           ? "🔒 Resultado oficial lançado"
-          : saved
+          : status === "saving"
+          ? "⏳ Salvando…"
+          : status === "saved"
           ? "✅ Salvo!"
+          : status === "local"
+          ? "📵 Salvo só neste aparelho"
+          : status === "error"
+          ? "⚠️ Falhou ao salvar — toque para tentar de novo"
           : guess && (guess.a > 0 || guess.b > 0)
           ? "✏️ Alterar palpite"
           : "💾 Salvar palpite"}
