@@ -437,6 +437,30 @@ export async function loadGroupPredictions(apelido: string): Promise<GroupPredic
   };
 }
 
+/**
+ * Todas as previsões de grupos (para o cálculo de pontos do ranking).
+ * Retorna { apelido: { grupo_copa: { first, second } } }. Pagina até esgotar
+ * (PostgREST corta em 1000 linhas/requisição).
+ */
+export async function loadAllGroupPredictions(): Promise<
+  Record<string, Record<string, { first: string; second: string }>>
+> {
+  const result: Record<string, Record<string, { first: string; second: string }>> = {};
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from("group_predictions")
+      .select("*")
+      .range(from, from + PAGE - 1);
+    if (error) { console.error("[SB] loadAllGroupPredictions:", error.message); break; }
+    for (const r of data ?? []) {
+      (result[r.apelido] ??= {})[r.grupo_copa] = { first: r.first_team, second: r.second_team };
+    }
+    if (!data || data.length < PAGE) break;
+  }
+  return result;
+}
+
 /** Grava todas as previsões do participante de uma vez (upsert em lote) */
 export async function upsertGroupPredictions(
   apelido: string,

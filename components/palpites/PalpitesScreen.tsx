@@ -22,7 +22,9 @@ export function PalpitesScreen() {
   const t = T[lang];
 
   const predLocked = arePredictionsLocked(groupPredictionsSaved);
-  const { total: ptsPrev } = calcGroupPredictionPts(groupPredictions, GROUPS, matches, resultFix);
+  // Prévia (provisória): conta a partir do 1º jogo do grupo. No ranking, só
+  // pontua quando o grupo encerra (ver calcGroupPredictionPts/computeAllGroupPredictionPts).
+  const { total: ptsPrev } = calcGroupPredictionPts(groupPredictions, GROUPS, matches, resultFix, { provisional: true });
 
   // Decide qual aba mostrar por padrão; se vier de "Palpite" de um jogo, vai direto para jogos
   const [tab, setTab] = useState<Tab>(focusMatchId || predLocked ? "jogos" : "grupos");
@@ -139,7 +141,7 @@ export function PalpitesScreen() {
             </span>
           )}
           {ptsPrev > 0 && (
-            <span style={{ fontSize: 11, color: "var(--neon)", marginLeft: 6 }}>+{ptsPrev}pts</span>
+            <span style={{ fontSize: 11, color: "var(--neon)", marginLeft: 6 }}>+{ptsPrev}pts (prévia)</span>
           )}
         </button>
 

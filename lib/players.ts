@@ -39,7 +39,8 @@ export function canonicalApelido(
 export function participantesToPlayers(
   participantes: Participante[],
   matchPts: Record<string, number> = {},
-  challengePts: Record<string, number> = {}
+  challengePts: Record<string, number> = {},
+  groupPredPts: Record<string, number> = {}
 ): Player[] {
   return participantes
     .filter((p) => p.ativo)
@@ -51,8 +52,11 @@ export function participantesToPlayers(
         .toUpperCase()
         .slice(0, 2);
 
-      // Base = pontos das partidas + pontos de desafios (adminDelta vai em effPts)
-      const pts = (matchPts[p.apelido] ?? 0) + (challengePts[p.apelido] ?? 0);
+      // Base = partidas + desafios + previsão de grupos (adminDelta vai em effPts)
+      const pts =
+        (matchPts[p.apelido] ?? 0) +
+        (challengePts[p.apelido] ?? 0) +
+        (groupPredPts[p.apelido] ?? 0);
 
       return {
         name: p.apelido,

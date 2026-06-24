@@ -37,12 +37,21 @@ export function isMatchLocked(
   return now >= match.kickoff + EXTRA_MS_AFTER_KICKOFF;
 }
 
-/** Pontos ganhos com as previsões de grupos (10 pts por classificado acertado) */
+/** Pontos ganhos com as previsões de grupos (10 pts por classificado acertado)
+ *
+ * `opts.provisional`:
+ *  - false (padrão, OFICIAL): só pontua um grupo quando TODOS os seus jogos
+ *    terminaram — antes disso os 2 classificados ainda podem mudar, então
+ *    pontuar seria sobre uma tabela provisória (ver issue #51).
+ *  - true (PRÉVIA da UI): pontua a partir do 1º jogo encerrado, para o
+ *    participante ver o potencial. NUNCA usar no somatório do ranking.
+ */
 export function calcGroupPredictionPts(
   predictions: Record<string, { first: string; second: string }>,
   groups: Group[],
   allMatches: Match[],
-  resultFix: Record<string, { sa: number; sb: number }>
+  resultFix: Record<string, { sa: number; sb: number }>,
+  opts: { provisional?: boolean } = {}
 ): { total: number; details: { group: string; pts: number; acertos: string[] }[] } {
   const details: { group: string; pts: number; acertos: string[] }[] = [];
   let total = 0;
@@ -54,14 +63,19 @@ export function calcGroupPredictionPts(
       continue;
     }
 
-    // Verifica se já há jogos suficientes encerrados (todas as rodadas do grupo)
+    // Verifica quantos jogos do grupo já foram encerrados (todas as rodadas)
     const groupMatches = allMatches.filter(
       (m) => m.group === group.name && m.phase === "grupos"
     );
+    const totalDoGrupo = groupMatches.length;
     const encerrados = groupMatches.filter((m) => !!resultFix[m.id]).length;
 
-    // Só calcula se ao menos 1 jogo foi encerrado
-    if (encerrados === 0) {
+    // OFICIAL: classificados só são definitivos com o grupo 100% encerrado.
+    // PRÉVIA: basta 1 jogo encerrado (tabela provisória).
+    const pronto = opts.provisional
+      ? encerrados > 0
+      : totalDoGrupo > 0 && encerrados === totalDoGrupo;
+    if (!pronto) {
       details.push({ group: group.name, pts: 0, acertos: [] });
       continue;
     }
@@ -81,6 +95,25 @@ export function calcGroupPredictionPts(
   }
 
   return { total, details };
+}
+
+/**
+ * Pontos OFICIAIS de previsão de grupos por participante (apelido → total).
+ * Usa a regra definitiva (só conta grupos encerrados). Alimenta o ranking.
+ */
+export function computeAllGroupPredictionPts(
+  allPredictions: Record<string, Record<string, { first: string; second: string }>>,
+  groups: Group[],
+  allMatches: Match[],
+  resultFix: Record<string, { sa: number; sb: number }>
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const apelido in allPredictions) {
+    out[apelido] = calcGroupPredictionPts(
+      allPredictions[apelido], groups, allMatches, resultFix
+    ).total;
+  }
+  return out;
 }
 
 export function calcGroupStandings(
