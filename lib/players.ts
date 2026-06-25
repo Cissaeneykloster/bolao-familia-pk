@@ -36,6 +36,22 @@ export function canonicalApelido(
 }
 
 
+/**
+ * True se o apelido (normalizado) já está em uso por OUTRO participante —
+ * em QUALQUER grupo. Os dados por participante (palpites/pontos/previsões)
+ * são chaveados só por apelido, então apelido repetido entre grupos mistura
+ * os dados (issue #49). Use no cadastro/edição para impedir a colisão.
+ */
+export function apelidoEmUso(
+  apelido: string,
+  participantes: { id: string; apelido: string }[],
+  exceptId?: string,
+): boolean {
+  const key = apelidoKey(apelido);
+  if (!key) return false;
+  return participantes.some((p) => p.id !== exceptId && apelidoKey(p.apelido) === key);
+}
+
 export function participantesToPlayers(
   participantes: Participante[],
   matchPts: Record<string, number> = {},

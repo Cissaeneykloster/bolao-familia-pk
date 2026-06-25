@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useBolao } from "@/lib/store";
 import { rankWithEff, effPts, mScore, breakdown, bonusPts } from "@/lib/scoring";
 import { ADMINS } from "@/lib/mock-data";
-import { participantesToPlayers } from "@/lib/players";
+import { participantesToPlayers, apelidoEmUso } from "@/lib/players";
 import { useDesafioCats } from "@/lib/useDesafios";
 import {
   upsertParticipante, deleteParticipante, updateParticipanteDb,
@@ -653,6 +653,9 @@ function TabParticipantes() {
   // Edição inline
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ nome: "", apelido: "", email: "", telefone: "" });
+  // Erros de apelido duplicado (colisão entre grupos — issue #49)
+  const [addErro, setAddErro] = useState<string | null>(null);
+  const [editErro, setEditErro] = useState<string | null>(null);
 
   // Considera "sem grupo" tanto null, undefined, quanto string vazia
   const semGrupoId = (p: { grupoId?: string | null }) => !p.grupoId || p.grupoId === "";
@@ -695,12 +698,9 @@ function TabParticipantes() {
       } catch { /* não é URL, usa texto direto */ }
       apelido = apelido.trim();
       if (!apelido) continue;
-      // Verifica se já existe
-      const existe = participantes.some(
-        (p) => p.apelido.toLowerCase() === apelido.toLowerCase() &&
-               (p.grupoId === adminGrupoId || !p.grupoId)
-      );
-      if (!existe) {
+      // Pula apelido já usado em QUALQUER grupo (os dados são chaveados só por
+      // apelido — apelido repetido entre grupos mistura palpites/pontos, #49)
+      if (!apelidoEmUso(apelido, participantes)) {
         addParticipante({ nome: apelido, apelido, email: "", telefone: "", grupoId: adminGrupoId });
         count++;
       }
@@ -712,6 +712,12 @@ function TabParticipantes() {
 
   const handleAdd = () => {
     if (!form.nome || !form.apelido || !adminGrupoId) return;
+    // Apelido único entre TODOS os grupos (evita colisão de dados — #49)
+    if (apelidoEmUso(form.apelido, participantes)) {
+      setAddErro(`Apelido "${form.apelido.trim()}" já está em uso (inclusive em outro grupo). Escolha outro.`);
+      return;
+    }
+    setAddErro(null);
     const p = addParticipante({ ...form, grupoId: adminGrupoId });
     // Grava no Supabase (sem bloquear a UI)
     upsertParticipante(p);
@@ -904,6 +910,9 @@ function TabParticipantes() {
         >
           Cadastrar e gerar link de acesso
         </button>
+        {addErro && (
+          <p style={{ fontSize: 12, color: "var(--danger)", margin: "8px 0 0" }}>⚠️ {addErro}</p>
+        )}
       </div>
 
       {/* Link gerado */}
@@ -987,6 +996,7 @@ function TabParticipantes() {
                 <button
                   aria-label={`Editar ${p.nome}`}
                   onClick={() => {
+                    setEditErro(null);
                     if (editingId === p.id) {
                       setEditingId(null);
                     } else {
@@ -1077,7 +1087,7 @@ function TabParticipantes() {
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
-                      onClick={() => setEditingId(null)}
+                      onClick={() => { setEditingId(null); setEditErro(null); }}
                       style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer", fontSize: 13 }}
                     >
                       Cancelar
@@ -1085,6 +1095,12 @@ function TabParticipantes() {
                     <button
                       onClick={() => {
                         if (!editForm.apelido) return;
+                        // Apelido único entre TODOS os grupos, ignorando o próprio (#49)
+                        if (apelidoEmUso(editForm.apelido, participantes, p.id)) {
+                          setEditErro(`Apelido "${editForm.apelido.trim()}" já está em uso (inclusive em outro grupo).`);
+                          return;
+                        }
+                        setEditErro(null);
                         updateParticipante(p.id, editForm);
                         updateParticipanteDb(p.id, editForm);
                         setEditingId(null);
@@ -1094,6 +1110,9 @@ function TabParticipantes() {
                       ✅ Salvar alterações
                     </button>
                   </div>
+                  {editErro && (
+                    <p style={{ fontSize: 12, color: "var(--danger)", margin: "8px 0 0" }}>⚠️ {editErro}</p>
+                  )}
                 </div>
               )}
             </div>
