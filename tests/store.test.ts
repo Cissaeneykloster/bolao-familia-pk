@@ -91,7 +91,7 @@ describe("adminUnlocked não persiste", () => {
   });
 });
 
-describe("saveResultAndCalcPts — pontos por participante (palpites do Supabase)", () => {
+describe("saveResultAndCalcPts — fonte única (computeMatchPts, regra sequencial)", () => {
   const P = (apelido: string) => ({
     id: apelido, grupoId: "pk", nome: apelido, apelido,
     email: "", telefone: "", token: "t", ativo: true,
@@ -99,47 +99,46 @@ describe("saveResultAndCalcPts — pontos por participante (palpites do Supabase
   const participantes = [P("Nino"), P("Cissa"), P("Dudi")];
 
   beforeEach(() => {
-    useBolao.setState({ matchPts: {}, officialResults: {}, resultFix: {} });
+    useBolao.setState({ matchPts: {}, officialResults: {}, resultFix: {}, allGuesses: {}, matchStats: {} });
   });
 
-  it("cada participante pontua pelo PRÓPRIO palpite; sem palpite = -3", () => {
-    // Resultado 2×1 — Nino acertou exato, Cissa só o vencedor, Dudi não palpitou
-    const matchGuesses = {
-      Nino:  { a: 2, b: 1 },
-      Cissa: { a: 1, b: 0 },
-    };
-    useBolao.getState().saveResultAndCalcPts(
-      "m1", { sa: 2, sb: 1 }, participantes, "pk", matchGuesses, "grupos",
-    );
+  it("recalcula pelo palpite real; ausência isolada NÃO penaliza (carência, não -3)", () => {
+    // ga1r1 é jogo REAL do seed. Nino crava, Cissa só vencedor, Dudi sem palpite.
+    const allGuesses = { ga1r1: { Nino: { a: 2, b: 1 }, Cissa: { a: 1, b: 0 } } };
+    useBolao.getState().saveResultAndCalcPts("ga1r1", { sa: 2, sb: 1 }, participantes, "pk", allGuesses);
 
     const pts = useBolao.getState().matchPts;
-    // exact(10) + winner(5) + total(3) + diff(3) + golsA(2) + golsB(2) = 25
-    expect(pts["Nino"]).toBe(25);
-    // winner(5) + diff(3) = 8
-    expect(pts["Cissa"]).toBe(8);
-    expect(pts["Dudi"]).toBe(-3);
+    expect(pts["Nino"]).toBe(25);  // placar exato
+    expect(pts["Cissa"]).toBe(8);  // vencedor(5) + diferença(3)
+    expect(pts["Dudi"]).toBe(0);   // sem palpite, mas dentro da carência — NÃO -3
+    expect(useBolao.getState().officialResults["ga1r1"]).toEqual({ sa: 2, sb: 1 });
   });
 
-  it("correção de resultado estorna os pontos antigos individualmente", () => {
-    const matchGuesses = { Nino: { a: 2, b: 1 }, Cissa: { a: 0, b: 0 } };
-
-    // Lança 2×1 e depois corrige para 0×0
-    useBolao.getState().saveResultAndCalcPts("m1", { sa: 2, sb: 1 }, participantes, "pk", matchGuesses, "grupos");
-    useBolao.getState().saveResultAndCalcPts("m1", { sa: 0, sb: 0 }, participantes, "pk", matchGuesses, "grupos");
+  it("corrigir o resultado recomputa do zero (sem estorno manual)", () => {
+    const allGuesses = { ga1r1: { Nino: { a: 2, b: 1 }, Cissa: { a: 0, b: 0 } } };
+    useBolao.getState().saveResultAndCalcPts("ga1r1", { sa: 2, sb: 1 }, participantes, "pk", allGuesses);
+    useBolao.getState().saveResultAndCalcPts("ga1r1", { sa: 0, sb: 0 }, participantes, "pk", allGuesses);
 
     const pts = useBolao.getState().matchPts;
-    // Após a correção, só valem os pontos do 0×0:
-    expect(pts["Nino"]).toBe(0);   // errou tudo no 0×0
-    expect(pts["Cissa"]).toBe(25); // exato no 0×0
-    expect(pts["Dudi"]).toBe(-3);  // sem palpite nos dois lançamentos
+    expect(pts["Nino"]).toBe(0);   // 2×1 errou o 0×0
+    expect(pts["Cissa"]).toBe(25); // cravou o 0×0
+    expect(pts["Dudi"]).toBe(0);
   });
 
-  it("treino não mexe nos pontos", () => {
+  it("também popula os contadores de desempate (exact/winners)", () => {
+    const allGuesses = { ga1r1: { Nino: { a: 2, b: 1 }, Cissa: { a: 1, b: 0 } } };
+    useBolao.getState().saveResultAndCalcPts("ga1r1", { sa: 2, sb: 1 }, participantes, "pk", allGuesses);
+    const stats = useBolao.getState().matchStats;
+    expect(stats["Nino"]).toEqual({ exact: 1, winners: 1 });
+    expect(stats["Cissa"]).toEqual({ exact: 0, winners: 1 });
+  });
+
+  it("treino não mexe nos pontos, só salva o resultado", () => {
     useBolao.getState().saveResultAndCalcPts(
-      "t1", { sa: 1, sb: 0 }, participantes, "pk", { Nino: { a: 1, b: 0 } }, "grupos", true,
+      "a1", { sa: 1, sb: 0 }, participantes, "pk", { a1: { Nino: { a: 1, b: 0 } } }, true,
     );
     expect(useBolao.getState().matchPts).toEqual({});
-    expect(useBolao.getState().officialResults["t1"]).toEqual({ sa: 1, sb: 0 });
+    expect(useBolao.getState().officialResults["a1"]).toEqual({ sa: 1, sb: 0 });
   });
 });
 
