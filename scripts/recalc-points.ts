@@ -25,11 +25,14 @@ async function get(path: string) {
 }
 
 async function main() {
-  const participantes = (await get("participantes?select=apelido,ativo")) as { apelido: string; ativo: boolean }[];
+  const participantes = (await get("participantes?select=apelido,ativo,created_at")) as { apelido: string; ativo: boolean; created_at: string | null }[];
   const official = (await get("official_results?select=match_id,sa,sb")) as { match_id: string; sa: number; sb: number }[];
   const guessesRows = (await get("guesses?select=apelido,match_id,gols_a,gols_b")) as { apelido: string; match_id: string; gols_a: number; gols_b: number }[];
 
-  const ativos = participantes.filter((p) => p.ativo).map((p) => ({ apelido: p.apelido }));
+  const ativos = participantes.filter((p) => p.ativo).map((p) => ({
+    apelido: p.apelido,
+    createdAt: p.created_at ? new Date(p.created_at).getTime() : undefined,
+  }));
 
   const officialResults: Record<string, { sa: number; sb: number }> = {};
   for (const r of official) officialResults[r.match_id] = { sa: r.sa, sb: r.sb };

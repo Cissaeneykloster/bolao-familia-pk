@@ -780,4 +780,5 @@ export interface Participante {
   telefone: string;
   token: string;      // token de acesso único (gerado pelo admin)
   ativo: boolean;
+  createdAt?: number; // ms do ingresso (created_at do banco) — não penaliza jogos anteriores
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sign, breakdown, mScore, bonusPts, effPts, rankWithEff, computeMatchStats } from "./scoring";
+import { sign, breakdown, mScore, bonusPts, effPts, rankWithEff, computeMatchStats, computeMatchPts } from "./scoring";
 import { DESAFIO_CATS } from "./mock-data";
 import type { Player, Match } from "./types";
 
@@ -162,5 +162,27 @@ describe("rankWithEff — desempate por exatos e depois vencedores (§5)", () =>
   it("pontos diferentes ignoram o desempate", () => {
     const r = rankWithEff([P("A", 60, 0, 0), P("B", 50, 9, 9)], {});
     expect(r[0].name).toBe("A");
+  });
+});
+
+describe("computeMatchPts — não penaliza jogos antes do ingresso (#48)", () => {
+  const M = (id: string, kickoff: number): Match => ({
+    id, phase: "grupos", group: "G",
+    a: { name: "A", flag: "" }, b: { name: "B", flag: "" },
+    status: "finished", kickoff,
+  });
+  // 6 jogos encerrados; ninguém palpitou. penaltyFrom=0 → todos puníveis.
+  const matches = [M("g1", 100), M("g2", 200), M("g3", 300), M("g4", 400), M("g5", 500), M("g6", 600)];
+  const official = Object.fromEntries(matches.map((m) => [m.id, { sa: 1, sb: 0 }]));
+
+  it("quem entrou cedo perde do 5º jogo seguido sem palpite em diante", () => {
+    const pts = computeMatchPts([{ apelido: "Early", createdAt: 0 }], official, {}, matches, 0);
+    expect(pts["Early"]).toBe(-6); // 6 ausências: 5ª e 6ª = -3 cada
+  });
+
+  it("quem entrou depois só conta ausência a partir do ingresso", () => {
+    // createdAt 350 → conta só g4/g5/g6 (3 ausências, dentro da carência de 4)
+    const pts = computeMatchPts([{ apelido: "Late", createdAt: 350 }], official, {}, matches, 0);
+    expect(pts["Late"]).toBe(0);
   });
 });
