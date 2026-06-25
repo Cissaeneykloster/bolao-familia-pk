@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { participantesToPlayers, apelidoKey, canonicalApelido } from "./players";
+import { participantesToPlayers, apelidoKey, canonicalApelido, apelidoEmUso } from "./players";
 import { effPts } from "./scoring";
 import type { Participante } from "./mock-data";
 
@@ -62,5 +62,23 @@ describe("canonicalApelido — resolve para a grafia cadastrada", () => {
 
   it("sem correspondência, devolve o apelido só com trim", () => {
     expect(canonicalApelido("  Novato  ", parts)).toBe("Novato");
+  });
+});
+
+describe("apelidoEmUso — impede apelido duplicado entre grupos (#49)", () => {
+  const lista = [
+    { id: "1", apelido: "Ney" },     // grupo pk
+    { id: "2", apelido: "Cissa" },   // grupo cissa
+  ];
+
+  it("detecta duplicata normalizada em qualquer grupo", () => {
+    expect(apelidoEmUso("ney", lista)).toBe(true);     // mesmo nome, caixa diferente
+    expect(apelidoEmUso("Císsa", lista)).toBe(true);   // outro grupo + acento
+    expect(apelidoEmUso("Novato", lista)).toBe(false);
+  });
+
+  it("ignora o próprio participante na edição", () => {
+    expect(apelidoEmUso("Ney", lista, "1")).toBe(false); // é ele mesmo
+    expect(apelidoEmUso("Ney", lista, "2")).toBe(true);  // colide com outro id
   });
 });
