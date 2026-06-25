@@ -8,7 +8,7 @@ import type { DesafioCat } from "./types";
 import { DESAFIO_CATS as DEFAULT_CATS, MATCHES, GROUPS } from "./mock-data";
 import { upsertGuess, upsertGroupPredictions } from "./supabase-sync";
 import type { DailyDraw } from "./supabase-sync";
-import { breakdown, computeMatchPts, computeMatchStats, PENALTY_START_MS } from "./scoring";
+import { computeMatchPts, computeMatchStats, PENALTY_START_MS } from "./scoring";
 import { isMatchLocked, arePredictionsLocked, computeAllGroupPredictionPts } from "./standings";
 import { canonicalApelido } from "./players";
 
@@ -172,15 +172,16 @@ interface BolaoState {
   setAdminDeltas: (m: Record<string, number>) => void;
   resetAdminDelta: (name: string) => void;
   setBetFix: (id: string, score: { a: number; b: number }) => void;
-  // Salva resultado E recalcula pontos (exceto treinos — não contam para ranking)
-  // matchGuesses: palpites DESTE jogo por apelido (loadAllGuesses(...)[matchId])
+  // Salva o resultado oficial e RECALCULA tudo pela fonte única (computeMatchPts
+  // + a regra de ausência sequencial). Treinos só salvam o resultado.
+  // allGuesses: TODOS os palpites (loadAllGuesses), não só os deste jogo —
+  // a penalidade de ausência depende da sequência entre jogos.
   saveResultAndCalcPts: (
     matchId: string,
     score: { sa: number; sb: number },
     participantes: import("./mock-data").Participante[],
     grupoId: string,
-    matchGuesses: Record<string, { a: number; b: number }>,
-    matchPhase: import("./types").MatchPhase,
+    allGuesses: Record<string, Record<string, { a: number; b: number }>>,
     isTraining?: boolean,
   ) => void;
   // Zera todos os pontos de partidas
@@ -545,39 +546,33 @@ export const useBolao = create<BolaoState>()(
           matchStats: computeMatchStats(state.officialResults, allGuesses, state.matches),
         })),
 
-      saveResultAndCalcPts: (matchId, score, participantes, _grupoId, matchGuesses, matchPhase, isTraining = false) =>
+      saveResultAndCalcPts: (matchId, score, participantes, _grupoId, allGuesses, isTraining = false) =>
         set((state) => {
-          // Treinos NÃO calculam pontos — só salvam o resultado oficial
+          const resultFix = { ...state.resultFix, [matchId]: score };
+          const officialResults = { ...state.officialResults, [matchId]: score };
+
+          // Treinos NÃO entram no ranking — só salvam o resultado oficial
           if (isTraining) {
-            return {
-              resultFix: { ...state.resultFix, [matchId]: score },
-              officialResults: { ...state.officialResults, [matchId]: score },
-            };
+            return { resultFix, officialResults };
           }
 
-          const ativos = participantes.filter((p) => p.ativo);
-
-          // Pontos de um participante para um placar: palpite real de cada
-          // um (vindo do Supabase via loadAllGuesses); sem palpite = -3
-          const ptsDe = (apelido: string, sc: { sa: number; sb: number }): number => {
-            const g = matchGuesses[apelido];
-            return g ? breakdown(sc, { a: g.a, b: g.b }, matchPhase).total : -3;
-          };
-
-          // Se já existe resultado anterior, estorna os pontos antigos antes de recalcular
-          const newMatchPts = { ...state.matchPts };
-          const prevScore = state.officialResults[matchId];
-
-          for (const part of ativos) {
-            const estorno = prevScore ? ptsDe(part.apelido, prevScore) : 0;
-            newMatchPts[part.apelido] =
-              (newMatchPts[part.apelido] ?? 0) - estorno + ptsDe(part.apelido, score);
-          }
-
+          // Fonte ÚNICA de verdade: recomputa TUDO a partir dos resultados
+          // oficiais + palpites reais. A penalidade de ausência é sequencial
+          // (carência de 4 + marco PENALTY_START_MS) e não pode ser feita
+          // incrementalmente por jogo — por isso recomputa do zero.
           return {
-            resultFix: { ...state.resultFix, [matchId]: score },
-            officialResults: { ...state.officialResults, [matchId]: score },
-            matchPts: newMatchPts,
+            resultFix,
+            officialResults,
+            allGuesses,
+            matchPts: computeMatchPts(
+              participantes.filter((p) => p.ativo),
+              officialResults,
+              allGuesses,
+              state.matches,
+              PENALTY_START_MS,
+            ),
+            matchStats: computeMatchStats(officialResults, allGuesses, state.matches),
+            groupPredPts: computeAllGroupPredictionPts(state.allGroupPredictions, GROUPS, state.matches, resultFix),
           };
         }),
 

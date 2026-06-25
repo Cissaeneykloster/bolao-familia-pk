@@ -604,11 +604,10 @@ function TabResultados() {
               <button
                 aria-label={isOfficial ? `Alterar resultado ${m.id}` : `Salvar resultado ${m.id}`}
                 onClick={async () => {
-                  // Palpites reais deste jogo, de todos os participantes (Supabase)
+                  // TODOS os palpites (a penalidade de ausência é sequencial);
+                  // saveResultAndCalcPts já recalcula tudo pela fonte única.
                   const allGuesses = await loadAllGuesses();
-                  saveResultAndCalcPts(m.id, draft, participantes, adminGrupoId ?? "", allGuesses[m.id] ?? {}, m.phase, !!m.training);
-                  // Recalcula TODOS os pontos com a regra de ausência sequencial (carência de 4)
-                  if (!m.training) recalcAllMatchPts(participantes, allGuesses);
+                  saveResultAndCalcPts(m.id, draft, participantes, adminGrupoId ?? "", allGuesses, !!m.training);
                   // Grava no Supabase (em background)
                   upsertOfficialResult(m.id, draft.sa, draft.sb);
                   // Depois que o store recalculou, sincroniza os pontos
