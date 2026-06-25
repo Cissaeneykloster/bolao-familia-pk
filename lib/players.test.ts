@@ -25,6 +25,13 @@ describe("participantesToPlayers", () => {
     const players = participantesToPlayers([part("Ney"), inativo], { Ney: 10, Ze: 99 });
     expect(players.map((p) => p.name)).toEqual(["Ney"]);
   });
+
+  it("soma a previsão de grupos à base (partidas + desafios + previsão)", () => {
+    const players = participantesToPlayers(
+      [part("Ney")], { Ney: 30 }, { Ney: 9 }, { Ney: 20 },
+    );
+    expect(players[0].pts).toBe(59); // 30 + 9 + 20
+  });
 });
 
 describe("apelidoKey — normaliza para comparação", () => {

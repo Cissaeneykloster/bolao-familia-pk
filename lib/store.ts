@@ -5,11 +5,11 @@ import { persist } from "zustand/middleware";
 import type { Draw, ChallengeRecord, FeedEvent, Match } from "./types";
 import type { Participante } from "./mock-data";
 import type { DesafioCat } from "./types";
-import { DESAFIO_CATS as DEFAULT_CATS, MATCHES } from "./mock-data";
+import { DESAFIO_CATS as DEFAULT_CATS, MATCHES, GROUPS } from "./mock-data";
 import { upsertGuess, upsertGroupPredictions } from "./supabase-sync";
 import type { DailyDraw } from "./supabase-sync";
 import { breakdown, computeMatchPts, PENALTY_START_MS } from "./scoring";
-import { isMatchLocked, arePredictionsLocked } from "./standings";
+import { isMatchLocked, arePredictionsLocked, computeAllGroupPredictionPts } from "./standings";
 import { canonicalApelido } from "./players";
 
 // ── Tipos do estado ───────────────────────────────────────────────
@@ -90,6 +90,11 @@ interface BolaoState {
   myChallengeDone: boolean | null;        // estado do usuário atual hoje (null = não marcou)
   challengePts: Record<string, number>;   // apelido → total de pontos de desafios
 
+  // Previsão dos grupos de TODOS (apelido → grupo → {first,second}) e os pontos
+  // OFICIAIS derivados (apelido → total). Servidor-derivados: não persistidos.
+  allGroupPredictions: Record<string, Record<string, { first: string; second: string }>>;
+  groupPredPts: Record<string, number>;
+
   // Dados compartilhados
   adminDelta: Record<string, number>;
   betFix: Record<string, { a: number; b: number }>;
@@ -119,6 +124,7 @@ interface BolaoState {
   setDailyDraw: (d: DailyDraw | null) => void;
   setMyChallengeDone: (v: boolean | null) => void;
   setChallengePts: (m: Record<string, number>) => void;
+  setAllGroupPredictions: (m: Record<string, Record<string, { first: string; second: string }>>) => void;
   setOfficialResults: (r: Record<string, { sa: number; sb: number }>) => void;
   setMatchPts: (pts: Record<string, number>) => void;
   mergeGuesses: (g: Record<string, { a: number; b: number }>) => void;
@@ -210,6 +216,8 @@ const initialState = {
   dailyDraw: null as DailyDraw | null,
   myChallengeDone: null as boolean | null,
   challengePts: {},
+  allGroupPredictions: {} as Record<string, Record<string, { first: string; second: string }>>,
+  groupPredPts: {} as Record<string, number>,
   matchPts: {},
   officialResults: {},
   feedEvents: [],
@@ -371,14 +379,33 @@ export const useBolao = create<BolaoState>()(
 
       // Supabase sync setters
       setParticipantes: (p) => set({ participantes: p }),
-      setMatches: (m) => set({ matches: m }),
+      setMatches: (m) =>
+        set((s) => ({
+          matches: m,
+          groupPredPts: computeAllGroupPredictionPts(s.allGroupPredictions, GROUPS, m, s.resultFix),
+        })),
       setDailyDraw: (d) => set({ dailyDraw: d }),
       setMyChallengeDone: (v) => set({ myChallengeDone: v }),
       setChallengePts: (m) => set({ challengePts: m }),
+      // Previsões de TODOS → recalcula os pontos OFICIAIS de previsão (só grupos
+      // encerrados contam). Reativo a resultados via setOfficialResults.
+      setAllGroupPredictions: (m) =>
+        set((s) => ({
+          allGroupPredictions: m,
+          groupPredPts: computeAllGroupPredictionPts(m, GROUPS, s.matches, s.resultFix),
+        })),
       // Resultados oficiais (servidor autoritativo) também alimentam resultFix,
       // que é o que a aba Grupos e os pontos de previsão usam para calcular.
+      // Mudar resultado pode encerrar um grupo → recalcula a previsão também.
       setOfficialResults: (r) =>
-        set((s) => ({ officialResults: r, resultFix: { ...s.resultFix, ...r } })),
+        set((s) => {
+          const resultFix = { ...s.resultFix, ...r };
+          return {
+            officialResults: r,
+            resultFix,
+            groupPredPts: computeAllGroupPredictionPts(s.allGroupPredictions, GROUPS, s.matches, resultFix),
+          };
+        }),
       setMatchPts: (pts) => set({ matchPts: pts }),
       mergeGuesses: (g) =>
         set((s) => {
@@ -586,7 +613,7 @@ export const useBolao = create<BolaoState>()(
       partialize: (state) => {
         // dados de servidor (matches/desafio diário) não são persistidos — vêm sempre fresh
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { adminUnlocked, adminGrupoId, matches, dailyDraw, myChallengeDone, challengePts, ...rest } = state;
+        const { adminUnlocked, adminGrupoId, matches, dailyDraw, myChallengeDone, challengePts, allGroupPredictions, groupPredPts, ...rest } = state;
         return rest;
       },
     }

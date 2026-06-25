@@ -5,11 +5,12 @@ import { useLang } from "@/lib/useLang";
 
 /** Origem dos pontos de um participante (por apelido). */
 export function usePointsBreakdown(name: string) {
-  const { matchPts, challengePts, adminDelta } = useBolao();
+  const { matchPts, challengePts, groupPredPts, adminDelta } = useBolao();
   const palpites = matchPts[name] ?? 0;
   const desafios = challengePts[name] ?? 0;
+  const previsao = groupPredPts[name] ?? 0;
   const admin = adminDelta[name] ?? 0;
-  return { palpites, desafios, admin, total: palpites + desafios + admin };
+  return { palpites, desafios, previsao, admin, total: palpites + desafios + previsao + admin };
 }
 
 function Linha({ icon, label, v }: { icon: string; label: string; v: number }) {
@@ -25,15 +26,16 @@ function Linha({ icon, label, v }: { icon: string; label: string; v: number }) {
 
 /** Detalha de onde vêm os pontos: Palpites (jogos) + Desafios + Ajuste do admin. */
 export function PointsBreakdown({ name }: { name: string }) {
-  const { palpites, desafios, admin, total } = usePointsBreakdown(name);
+  const { palpites, desafios, previsao, admin, total } = usePointsBreakdown(name);
   const lang = useLang();
   const L = lang === "en"
-    ? { palpites: "Bets", desafios: "Challenges", admin: "Admin adjust", total: "Total" }
-    : { palpites: "Palpites", desafios: "Desafios", admin: "Ajuste do admin", total: "Total" };
+    ? { palpites: "Bets", desafios: "Challenges", previsao: "Group picks", admin: "Admin adjust", total: "Total" }
+    : { palpites: "Palpites", desafios: "Desafios", previsao: "Previsão de grupos", admin: "Ajuste do admin", total: "Total" };
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       <Linha icon="🎯" label={L.palpites} v={palpites} />
       <Linha icon="🎮" label={L.desafios} v={desafios} />
+      <Linha icon="🔮" label={L.previsao} v={previsao} />
       <Linha icon="🛠️" label={L.admin} v={admin} />
       <div style={{
         borderTop: "1px solid var(--border)", marginTop: 4, paddingTop: 5,

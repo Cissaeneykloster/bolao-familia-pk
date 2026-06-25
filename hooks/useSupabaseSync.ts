@@ -5,7 +5,7 @@ import { useBolao } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import {
   loadParticipantes, loadOfficialResults, loadMatchPts, loadGuesses,
-  loadGroupPredictions, backfillGuesses, upsertGroupPredictions,
+  loadGroupPredictions, loadAllGroupPredictions, backfillGuesses, upsertGroupPredictions,
   loadMatches, syncAllMatches, seedMissingMatches, loadAdminDeltas,
   loadDailyDraw, insertDailyDraw, loadChallengePts, loadMyChallengeDone,
 } from "@/lib/supabase-sync";
@@ -30,6 +30,7 @@ export function useSupabaseSync() {
     setChallengePts,
     mergeGuesses,
     mergeGroupPredictions,
+    setAllGroupPredictions,
     setCurrentUserApelido,
     currentUserApelido,
   } = useBolao();
@@ -119,6 +120,9 @@ export function useSupabaseSync() {
       // Carrega ajustes manuais do admin (sempre sobrescreve — servidor é autoritativo)
       setAdminDeltas(await loadAdminDeltas());
 
+      // Previsões de grupos de TODOS → pontos oficiais de previsão no ranking
+      setAllGroupPredictions(await loadAllGroupPredictions());
+
       // Carrega palpites e previsões do usuário atual (se identificado)
       if (meApelido) {
         // Snapshot do que existe só neste aparelho, antes do merge
@@ -161,6 +165,7 @@ export function useSupabaseSync() {
       if (Object.keys(pts).length > 0) setMatchPts(pts);
       setChallengePts(await loadChallengePts());
       setAdminDeltas(await loadAdminDeltas());
+      setAllGroupPredictions(await loadAllGroupPredictions());
       const parts = await loadParticipantes();
       if (parts.length > 0) setParticipantes(parts);
     }, 30_000);
@@ -212,8 +217,10 @@ export function useSupabaseSync() {
         if (apelido) setMyChallengeDone(await loadMyChallengeDone(apelido, todayBrasilia()));
       })
 
-      // Previsões dos grupos (sincroniza entre os dispositivos do mesmo usuário)
+      // Previsões dos grupos (sincroniza entre os dispositivos do mesmo usuário
+      // e recalcula os pontos oficiais de previsão de TODOS no ranking)
       .on("postgres_changes", { event: "*", schema: "public", table: "group_predictions" }, async () => {
+        setAllGroupPredictions(await loadAllGroupPredictions());
         const apelido = useBolao.getState().currentUserApelido;
         if (!apelido) return;
         const { predictions, saved } = await loadGroupPredictions(apelido);
@@ -226,5 +233,5 @@ export function useSupabaseSync() {
       supabase.removeChannel(channel);
       clearInterval(pollId);
     };
-  }, [setParticipantes, setMatches, setOfficialResults, setMatchPts, setAdminDeltas, setDailyDraw, setMyChallengeDone, setChallengePts, mergeGuesses, mergeGroupPredictions, currentUserApelido]);
+  }, [setParticipantes, setMatches, setOfficialResults, setMatchPts, setAdminDeltas, setDailyDraw, setMyChallengeDone, setChallengePts, setAllGroupPredictions, mergeGuesses, mergeGroupPredictions, currentUserApelido]);
 }

@@ -68,9 +68,10 @@ export function PrevisaoGrupos() {
   }).length;
   const tudo = preenchidos === totalGrupos;
 
-  // Calcula pontos acumulados com os resultados já disponíveis
+  // Prévia (provisória): mostra o potencial com os resultados já disponíveis.
+  // No ranking, cada grupo só pontua quando todos os seus jogos terminam.
   const { total: ptsTotais, details } = calcGroupPredictionPts(
-    groupPredictions, GROUPS, matches, resultFix
+    groupPredictions, GROUPS, matches, resultFix, { provisional: true }
   );
 
   const handleSave = () => {
@@ -108,6 +109,9 @@ export function PrevisaoGrupos() {
           {ptsTotais > 0 && (
             <span className="font-bebas" style={{ fontSize: 24, color: "var(--neon)" }}>
               +{ptsTotais} pts
+              <span style={{ fontSize: 10, color: "var(--muted)", display: "block", textAlign: "right" }}>
+                prévia · conta ao fim do grupo
+              </span>
             </span>
           )}
         </div>
