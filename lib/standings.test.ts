@@ -78,3 +78,34 @@ describe("computeAllGroupPredictionPts — pontos oficiais por participante (#45
     expect(computeAllGroupPredictionPts(all, [GX], MX, PARCIAL).Ney).toBe(0);
   });
 });
+
+// ── Desempate da classificação de grupo: gols pró e confronto direto (#52) ──
+describe("calcGroupStandings — desempate por gols pró e confronto direto", () => {
+  const grp = (name: string, names: string[]): Group => ({
+    name, teams: names.map(mkTeam),
+    pred: { first: "", second: "" }, predResult: "wait", predPts: 0, games: [],
+  });
+  const M = (id: string, group: string, a: string, b: string): Match =>
+    ({ id, phase: "grupos", group, a: { name: a, flag: "" }, b: { name: b, flag: "" }, status: "finished" });
+
+  it("gols pró desempata quando pts e saldo empatam", () => {
+    const G = grp("GP", ["A", "B", "C", "D"]);
+    const matches = [M("p1", "GP", "A", "C"), M("p2", "GP", "B", "D")];
+    const res = { p1: { sa: 3, sb: 1 }, p2: { sa: 2, sb: 0 } };
+    // A e B: pts3, sg+2; gols pró A=3 > B=2 → A na frente. C(gf1) > D(gf0).
+    expect(calcGroupStandings(G, matches, res).map((t) => t.name)).toEqual(["A", "B", "C", "D"]);
+  });
+
+  it("confronto direto desempata com pts, saldo e gols pró iguais", () => {
+    // Ordem [B,A,...]: sem confronto direto o empate cairia em B,A (inserção).
+    const G = grp("HH", ["B", "A", "C", "D"]);
+    const matches = [
+      M("h1", "HH", "A", "B"), // A 2×1 B
+      M("h2", "HH", "A", "C"), // A 0×1 C
+      M("h3", "HH", "B", "D"), // B 1×0 D
+    ];
+    const res = { h1: { sa: 2, sb: 1 }, h2: { sa: 0, sb: 1 }, h3: { sa: 1, sb: 0 } };
+    // C(3,+1,1) lidera; A e B empatam (3,0,2) → A venceu B no confronto direto.
+    expect(calcGroupStandings(G, matches, res).map((t) => t.name)).toEqual(["C", "A", "B", "D"]);
+  });
+});
