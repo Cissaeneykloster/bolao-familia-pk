@@ -82,9 +82,14 @@ export function rankWithEff(
   adminDelta: Record<string, number>,
   bonus = 0
 ): Player[] {
-  return [...players].sort(
-    (a, b) => effPts(b, adminDelta, bonus) - effPts(a, adminDelta, bonus)
-  );
+  return [...players].sort((a, b) => {
+    // 1º) pontos efetivos
+    const d = effPts(b, adminDelta, bonus) - effPts(a, adminDelta, bonus);
+    if (d !== 0) return d;
+    // Desempate (§5 do regulamento): 2º) mais placares exatos, 3º) mais vencedores
+    if ((b.exact ?? 0) !== (a.exact ?? 0)) return (b.exact ?? 0) - (a.exact ?? 0);
+    return (b.winners ?? 0) - (a.winners ?? 0);
+  });
 }
 
 /** Pontuação máxima possível em um jogo (grupos) */
@@ -114,6 +119,34 @@ export const PENALTY_START_MS = new Date("2026-06-14T03:00:00Z").getTime(); // 1
  * `penaltyFrom`: só penaliza ausência em jogos com kickoff >= esse instante
  * (jogos anteriores só somam pontos positivos). 0 = penaliza tudo.
  */
+/**
+ * Contadores por participante para o desempate (§5 do regulamento):
+ *  - exact:   nº de placares exatos cravados
+ *  - winners: nº de vencedores acertados (inclui os placares exatos)
+ * Considera só jogos finalizados (com resultado oficial) e ignora treinos.
+ */
+export function computeMatchStats(
+  officialResults: Record<string, { sa: number; sb: number }>,
+  allGuesses: Record<string, Record<string, { a: number; b: number }>>,
+  matches: Match[],
+): Record<string, { exact: number; winners: number }> {
+  const byId = new Map(matches.map((m) => [m.id, m]));
+  const stats: Record<string, { exact: number; winners: number }> = {};
+  for (const matchId in officialResults) {
+    const m = byId.get(matchId);
+    if (!m || m.training) continue;
+    const score = officialResults[matchId];
+    const mg = allGuesses[matchId] ?? {};
+    for (const apelido in mg) {
+      const g = mg[apelido];
+      const s = (stats[apelido] ??= { exact: 0, winners: 0 });
+      if (score.sa === g.a && score.sb === g.b) s.exact += 1;
+      if (sign(score.sa - score.sb) === sign(g.a - g.b)) s.winners += 1;
+    }
+  }
+  return stats;
+}
+
 export function computeMatchPts(
   ativos: { apelido: string }[],
   officialResults: Record<string, { sa: number; sb: number }>,

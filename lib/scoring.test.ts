@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { sign, breakdown, mScore, bonusPts, effPts, rankWithEff } from "./scoring";
+import { sign, breakdown, mScore, bonusPts, effPts, rankWithEff, computeMatchStats } from "./scoring";
 import { DESAFIO_CATS } from "./mock-data";
-import type { Player } from "./types";
+import type { Player, Match } from "./types";
 
 // Jogadores de teste locais (não dependem do RANKING mockado)
 const PLAYERS: Player[] = [
@@ -115,5 +115,52 @@ describe("effPts / rankWithEff", () => {
     const last = PLAYERS[PLAYERS.length - 1];
     const ranked = rankWithEff(PLAYERS, { [last.name]: 999 });
     expect(ranked[0].name).toBe(last.name);
+  });
+});
+
+// ── Desempate (#46): contadores e ordenação ──────────────────────
+describe("computeMatchStats — contadores de desempate", () => {
+  const mkM = (id: string, training = false): Match => ({
+    id, phase: "grupos", group: "G",
+    a: { name: "A", flag: "" }, b: { name: "B", flag: "" },
+    status: "finished", training,
+  });
+  const matches = [mkM("m1"), mkM("m2"), mkM("t1", true)];
+  const official = { m1: { sa: 2, sb: 1 }, m2: { sa: 0, sb: 0 }, t1: { sa: 5, sb: 5 } };
+  const guesses = {
+    m1: { Ney: { a: 2, b: 1 }, Cissa: { a: 1, b: 0 } }, // Ney exato; Cissa só vencedor
+    m2: { Ney: { a: 0, b: 0 }, Cissa: { a: 1, b: 2 } }, // Ney exato (empate); Cissa errou
+    t1: { Ney: { a: 5, b: 5 } },                        // treino — ignorado
+  };
+  const stats = computeMatchStats(official, guesses, matches);
+
+  it("conta placares exatos (treino ignorado)", () => {
+    expect(stats.Ney.exact).toBe(2);
+    expect(stats.Cissa.exact).toBe(0);
+  });
+
+  it("conta vencedores (inclui os exatos)", () => {
+    expect(stats.Ney.winners).toBe(2);
+    expect(stats.Cissa.winners).toBe(1); // só m1
+  });
+});
+
+describe("rankWithEff — desempate por exatos e depois vencedores (§5)", () => {
+  const P = (name: string, pts: number, exact: number, winners: number): Player =>
+    ({ name, initials: name.slice(0, 2).toUpperCase(), pts, trend: "flat", exact, winners });
+
+  it("mesmos pontos: mais placares exatos primeiro", () => {
+    const r = rankWithEff([P("A", 50, 1, 3), P("B", 50, 4, 3)], {});
+    expect(r[0].name).toBe("B");
+  });
+
+  it("empate em pontos e exatos: mais vencedores primeiro", () => {
+    const r = rankWithEff([P("A", 50, 2, 1), P("B", 50, 2, 5)], {});
+    expect(r[0].name).toBe("B");
+  });
+
+  it("pontos diferentes ignoram o desempate", () => {
+    const r = rankWithEff([P("A", 60, 0, 0), P("B", 50, 9, 9)], {});
+    expect(r[0].name).toBe("A");
   });
 });

@@ -32,6 +32,14 @@ describe("participantesToPlayers", () => {
     );
     expect(players[0].pts).toBe(59); // 30 + 9 + 20
   });
+
+  it("propaga exact/winners do matchStats (desempate)", () => {
+    const players = participantesToPlayers(
+      [part("Ney")], { Ney: 30 }, {}, {}, { Ney: { exact: 3, winners: 7 } },
+    );
+    expect(players[0].exact).toBe(3);
+    expect(players[0].winners).toBe(7);
+  });
 });
 
 describe("apelidoKey — normaliza para comparação", () => {

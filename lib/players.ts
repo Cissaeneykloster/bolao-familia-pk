@@ -40,7 +40,8 @@ export function participantesToPlayers(
   participantes: Participante[],
   matchPts: Record<string, number> = {},
   challengePts: Record<string, number> = {},
-  groupPredPts: Record<string, number> = {}
+  groupPredPts: Record<string, number> = {},
+  matchStats: Record<string, { exact: number; winners: number }> = {}
 ): Player[] {
   return participantes
     .filter((p) => p.ativo)
@@ -58,12 +59,14 @@ export function participantesToPlayers(
         (challengePts[p.apelido] ?? 0) +
         (groupPredPts[p.apelido] ?? 0);
 
+      const stats = matchStats[p.apelido];
       return {
         name: p.apelido,
         initials,
         pts,
         trend: "flat" as const,
-        exact: 0,
+        exact: stats?.exact ?? 0,
+        winners: stats?.winners ?? 0,
         you: false,
       };
     })

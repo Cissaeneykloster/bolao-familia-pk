@@ -120,7 +120,7 @@ function TabDesafios() {
 
 // ── Aba Pontos ───────────────────────────────────────────────────
 function TabPontos() {
-  const { adminDelta, setAdminDeltas, desafios, comboBank, penalty, participantes, adminGrupoId, resetMatchPts, matchPts, challengePts, groupPredPts, recalcAllMatchPts } = useBolao();
+  const { adminDelta, setAdminDeltas, desafios, comboBank, penalty, participantes, adminGrupoId, resetMatchPts, matchPts, challengePts, groupPredPts, matchStats, recalcAllMatchPts } = useBolao();
   const [recalcing, setRecalcing] = useState(false);
   const [recalcMsg, setRecalcMsg] = useState("");
   const [sortAZ, setSortAZ] = useState(false);
@@ -128,7 +128,7 @@ function TabPontos() {
   const DESAFIO_CATS = useDesafioCats();
   const bonus = bonusPts(desafios, DESAFIO_CATS, comboBank, penalty);
   const meusPart = participantes.filter((p) => p.grupoId === adminGrupoId && p.ativo);
-  const players = participantesToPlayers(meusPart, matchPts, challengePts, groupPredPts);
+  const players = participantesToPlayers(meusPart, matchPts, challengePts, groupPredPts, matchStats);
   // A–Z mantém a linha estável ao clicar +/-; "Pontos" ordena pelo ranking
   const ranked = sortAZ
     ? [...players].sort((a, b) => a.name.localeCompare(b.name, "pt"))
