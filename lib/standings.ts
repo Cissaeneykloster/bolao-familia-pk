@@ -123,8 +123,10 @@ export function calcGroupStandings(
 ): GroupTeam[] {
   // Inicializa todos os times com estatísticas zeradas
   const stats: Record<string, GroupTeam> = {};
+  const gf: Record<string, number> = {}; // gols pró (não está no GroupTeam — local p/ desempate)
   for (const team of group.teams) {
     stats[team.name] = { ...team, j: 0, v: 0, e: 0, d: 0, sg: 0, pts: 0 };
+    gf[team.name] = 0;
   }
 
   // "Encerrado" = tem resultado oficial lançado (o status do jogo não muda sozinho)
@@ -146,6 +148,8 @@ export function calcGroupStandings(
     // Gols
     stats[nameA].sg += sa - sb;
     stats[nameB].sg += sb - sa;
+    gf[nameA] += sa;
+    gf[nameB] += sb;
 
     if (sa > sb) {
       // Time A venceu
@@ -162,10 +166,50 @@ export function calcGroupStandings(
     }
   }
 
-  // Ordena: pts → sg → vitórias
-  return Object.values(stats).sort((a, b) => {
+  // Mini-tabela do confronto direto entre um conjunto de times empatados.
+  const headToHead = (names: Set<string>) => {
+    const mp: Record<string, { pts: number; sg: number; gf: number }> = {};
+    for (const n of names) mp[n] = { pts: 0, sg: 0, gf: 0 };
+    for (const match of groupMatches) {
+      if (!names.has(match.a.name) || !names.has(match.b.name)) continue;
+      const { sa, sb } = mScore(match, resultFix);
+      mp[match.a.name].sg += sa - sb; mp[match.a.name].gf += sa;
+      mp[match.b.name].sg += sb - sa; mp[match.b.name].gf += sb;
+      if (sa > sb) mp[match.a.name].pts += 3;
+      else if (sb > sa) mp[match.b.name].pts += 3;
+      else { mp[match.a.name].pts += 1; mp[match.b.name].pts += 1; }
+    }
+    return mp;
+  };
+
+  // Critério geral (FIFA): pontos → saldo de gols → gols pró.
+  const teams = Object.values(stats).sort((a, b) => {
     if (b.pts !== a.pts) return b.pts - a.pts;
     if (b.sg !== a.sg) return b.sg - a.sg;
-    return b.v - a.v;
+    return gf[b.name] - gf[a.name];
   });
+
+  // Desempate dos que ficaram iguais em (pts, sg, gols pró): confronto direto
+  // (pts → sg → gols pró entre eles) → vitórias → nome (determinístico).
+  const keyOf = (t: GroupTeam) => `${t.pts}|${t.sg}|${gf[t.name]}`;
+  for (let i = 0; i < teams.length; ) {
+    let j = i + 1;
+    while (j < teams.length && keyOf(teams[j]) === keyOf(teams[i])) j++;
+    if (j - i > 1) {
+      const tied = teams.slice(i, j);
+      const names = new Set(tied.map((t) => t.name));
+      const mp = headToHead(names);
+      tied.sort((a, b) => {
+        if (mp[b.name].pts !== mp[a.name].pts) return mp[b.name].pts - mp[a.name].pts;
+        if (mp[b.name].sg !== mp[a.name].sg) return mp[b.name].sg - mp[a.name].sg;
+        if (mp[b.name].gf !== mp[a.name].gf) return mp[b.name].gf - mp[a.name].gf;
+        if (b.v !== a.v) return b.v - a.v;
+        return a.name.localeCompare(b.name);
+      });
+      for (let k = 0; k < tied.length; k++) teams[i + k] = tied[k];
+    }
+    i = j;
+  }
+
+  return teams;
 }
