@@ -8,6 +8,7 @@ export interface Player {
   pts: number;
   trend: Trend;
   exact: number;
+  winners?: number;   // acertos de vencedor (p/ desempate — §5 do regulamento)
   you?: boolean;
 }
 

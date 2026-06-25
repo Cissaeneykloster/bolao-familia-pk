@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useBolao } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import {
-  loadParticipantes, loadOfficialResults, loadMatchPts, loadGuesses,
+  loadParticipantes, loadOfficialResults, loadMatchPts, loadGuesses, loadAllGuesses,
   loadGroupPredictions, loadAllGroupPredictions, backfillGuesses, upsertGroupPredictions,
   loadMatches, syncAllMatches, seedMissingMatches, loadAdminDeltas,
   loadDailyDraw, insertDailyDraw, loadChallengePts, loadMyChallengeDone,
@@ -31,6 +31,7 @@ export function useSupabaseSync() {
     mergeGuesses,
     mergeGroupPredictions,
     setAllGroupPredictions,
+    setAllGuesses,
     setCurrentUserApelido,
     currentUserApelido,
   } = useBolao();
@@ -123,6 +124,9 @@ export function useSupabaseSync() {
       // Previsões de grupos de TODOS → pontos oficiais de previsão no ranking
       setAllGroupPredictions(await loadAllGroupPredictions());
 
+      // Palpites de TODOS → contadores de desempate (placares exatos / vencedores)
+      setAllGuesses(await loadAllGuesses());
+
       // Carrega palpites e previsões do usuário atual (se identificado)
       if (meApelido) {
         // Snapshot do que existe só neste aparelho, antes do merge
@@ -166,6 +170,7 @@ export function useSupabaseSync() {
       setChallengePts(await loadChallengePts());
       setAdminDeltas(await loadAdminDeltas());
       setAllGroupPredictions(await loadAllGroupPredictions());
+      setAllGuesses(await loadAllGuesses());
       const parts = await loadParticipantes();
       if (parts.length > 0) setParticipantes(parts);
     }, 30_000);
@@ -181,8 +186,9 @@ export function useSupabaseSync() {
         setParticipantes(parts);
       })
 
-      // Resultado oficial lançado
+      // Resultado oficial lançado (recarrega palpites p/ atualizar o desempate)
       .on("postgres_changes", { event: "*", schema: "public", table: "official_results" }, async () => {
+        setAllGuesses(await loadAllGuesses());
         const results = await loadOfficialResults();
         setOfficialResults(results);
       })
@@ -233,5 +239,5 @@ export function useSupabaseSync() {
       supabase.removeChannel(channel);
       clearInterval(pollId);
     };
-  }, [setParticipantes, setMatches, setOfficialResults, setMatchPts, setAdminDeltas, setDailyDraw, setMyChallengeDone, setChallengePts, setAllGroupPredictions, mergeGuesses, mergeGroupPredictions, currentUserApelido]);
+  }, [setParticipantes, setMatches, setOfficialResults, setMatchPts, setAdminDeltas, setDailyDraw, setMyChallengeDone, setChallengePts, setAllGroupPredictions, setAllGuesses, mergeGuesses, mergeGroupPredictions, currentUserApelido]);
 }
