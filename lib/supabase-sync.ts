@@ -36,6 +36,7 @@ export async function loadParticipantes(): Promise<Participante[]> {
     telefone: r.telefone ?? "",
     token: r.token,
     ativo: r.ativo,
+    createdAt: r.created_at ? new Date(r.created_at).getTime() : undefined,
   }));
 }
 

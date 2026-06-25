@@ -80,8 +80,13 @@ export async function GET(request: Request) {
   for (const [id, sc] of current) merged[id] = sc;
   for (const r of novos) merged[r.matchId] = { sa: r.sa, sb: r.sb };
 
-  const { data: parts } = await supabase.from("participantes").select("apelido,ativo");
-  const ativos = (parts ?? []).filter((p) => p.ativo).map((p) => ({ apelido: p.apelido as string }));
+  const { data: parts } = await supabase.from("participantes").select("apelido,ativo,created_at");
+  const ativos = (parts ?? [])
+    .filter((p) => p.ativo)
+    .map((p) => ({
+      apelido: p.apelido as string,
+      createdAt: p.created_at ? new Date(p.created_at as string).getTime() : undefined,
+    }));
 
   // PostgREST corta em 1000 linhas/requisição — pagina até esgotar, senão o
   // ranking é recalculado com palpites parciais (ficaria subcontado)

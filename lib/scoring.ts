@@ -148,7 +148,7 @@ export function computeMatchStats(
 }
 
 export function computeMatchPts(
-  ativos: { apelido: string }[],
+  ativos: { apelido: string; createdAt?: number }[],
   officialResults: Record<string, { sa: number; sb: number }>,
   allGuesses: Record<string, Record<string, { a: number; b: number }>>,
   matches: Match[],
@@ -162,14 +162,23 @@ export function computeMatchPts(
 
   const pts: Record<string, number> = {};
   const streak: Record<string, number> = {};
-  for (const p of ativos) { pts[p.apelido] = 0; streak[p.apelido] = 0; }
+  const joinedAt: Record<string, number> = {};
+  for (const p of ativos) {
+    pts[p.apelido] = 0;
+    streak[p.apelido] = 0;
+    joinedAt[p.apelido] = p.createdAt ?? 0;
+  }
 
   for (const m of jogos) {
     const score = officialResults[m.id];
     const mg = allGuesses[m.id] ?? {};
-    const penaliza = (m.kickoff ?? 0) >= penaltyFrom; // jogos antes do marco não punem ausência
+    const kickoff = m.kickoff ?? 0;
+    const afterMarco = kickoff >= penaltyFrom; // jogos antes do marco não punem ausência
     for (const p of ativos) {
       const g = mg[p.apelido];
+      // Só penaliza ausência em jogos a partir do ingresso do participante —
+      // quem entrou depois não podia ter palpitado nos jogos anteriores.
+      const penaliza = afterMarco && kickoff >= joinedAt[p.apelido];
       if (g) {
         pts[p.apelido] += breakdown(score, { a: g.a, b: g.b }, m.phase).total;
         if (penaliza) streak[p.apelido] = 0; // palpitou → zera a carência
