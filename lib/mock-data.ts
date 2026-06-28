@@ -57,7 +57,7 @@ export const ADMIN_PIN  = "2026";
 
 // ── Pontos do vencedor por fase mata-mata ────────────────────────
 export const WINNER_PTS_BY_PHASE: Record<string, number> = {
-  dezesseis: 17,
+  dezesseis: 27,
   oitavas: 27,
   quartas: 37,
   semi:    47,
