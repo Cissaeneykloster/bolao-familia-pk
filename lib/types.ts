@@ -17,7 +17,7 @@ export interface Team { name: string; flag: string; }
 export type MatchStatus = "finished" | "live" | "upcoming";
 
 export type MatchPhase =
-  | "amistoso" | "grupos" | "oitavas" | "quartas" | "semi" | "terceiro" | "final";
+  | "amistoso" | "grupos" | "dezesseis" | "oitavas" | "quartas" | "semi" | "terceiro" | "final";
 
 export interface Match {
   id: string;
