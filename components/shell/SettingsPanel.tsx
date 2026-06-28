@@ -234,11 +234,26 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           </div>
         )}
 
+        {/* Atualizar app */}
+        <button
+          onClick={() => {
+            window.location.href = window.location.origin + window.location.pathname + "?v=" + Date.now();
+          }}
+          style={{
+            padding: "12px 0", borderRadius: 8,
+            border: "1px solid var(--neon)",
+            background: "var(--neon-soft)",
+            color: "var(--neon)", cursor: "pointer", fontSize: 14, fontWeight: 700,
+          }}
+        >
+          🔄 Atualizar App
+        </button>
+
         {/* Área da gerência */}
         <button
           onClick={() => setShowAdminGate(true)}
           style={{
-            padding: "10px 0", borderRadius: 8, marginTop: "auto",
+            padding: "10px 0", borderRadius: 8,
             border: "1px solid var(--border)", background: "transparent",
             color: "var(--muted)", cursor: "pointer", fontSize: 13, fontWeight: 600,
           }}
