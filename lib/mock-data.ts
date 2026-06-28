@@ -57,6 +57,7 @@ export const ADMIN_PIN  = "2026";
 
 // ── Pontos do vencedor por fase mata-mata ────────────────────────
 export const WINNER_PTS_BY_PHASE: Record<string, number> = {
+  dezesseis: 17,
   oitavas: 27,
   quartas: 37,
   semi:    47,
@@ -80,7 +81,7 @@ function brt(date: string, h: number, m = 0): number {
 const F: Record<string, string> = {
   ...ENG,
   RSA: "🇿🇦", KOR2: "🇰🇷", CZE: "🇨🇿", BIH: "🇧🇦",
-  QAT: "🇶🇦", SUI: "🇨🇭", HAI: "🇭🇹", SCO: "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+  MAR: "🇲🇦", QAT: "🇶🇦", SUI: "🇨🇭", HAI: "🇭🇹", SCO: "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
   AUS: "🇦🇺", TUR: "🇹🇷", PAR: "🇵🇾", CUW: "🇨🇼",
   CIV: "🇨🇮", ECU: "🇪🇨", SWE: "🇸🇪", TUN: "🇹🇳",
   NED: "🇳🇱", BEL: "🇧🇪", EGY: "🇪🇬", IRN2: "🇮🇷",
@@ -484,6 +485,81 @@ export const MATCHES: Match[] = [
   { id:"gl2r3", phase:"grupos", group:"Grupo L", rodada:3, status:"upcoming",
     a:{name:"Croácia",    flag:F.CRO},   b:{name:"Gana",     flag:F.GHA},
     kickoff:brt("2026-06-27",18,0), label:"27/Jun 18h00" },
+
+  // ══════════════════════════════════════════
+  // DEZESSEIS AVOS DE FINAL (28/Jun – 03/Jul)
+  // Pontuação diferenciada: acerto do vencedor = 17 pts
+  // ══════════════════════════════════════════
+
+  // 28/Jun — Domingo
+  { id:"d1", phase:"dezesseis", group:"Dezesseis Avos", status:"upcoming",
+    a:{name:"Canadá",       flag:ENG.CAN}, b:{name:"África do Sul", flag:F.RSA},
+    kickoff:brt("2026-06-28",16,0),  label:"28/Jun 16h00" },
+
+  // 29/Jun — Segunda
+  { id:"d2", phase:"dezesseis", group:"Dezesseis Avos", status:"upcoming",
+    a:{name:"Brasil",       flag:ENG.BRA}, b:{name:"Japão",         flag:ENG.JPN},
+    kickoff:brt("2026-06-29",14,0),  label:"29/Jun 14h00" },
+
+  { id:"d3", phase:"dezesseis", group:"Dezesseis Avos", status:"upcoming",
+    a:{name:"Alemanha",     flag:ENG.GER}, b:{name:"Paraguai",      flag:F.PAR},
+    kickoff:brt("2026-06-29",17,30), label:"29/Jun 17h30" },
+
+  { id:"d4", phase:"dezesseis", group:"Dezesseis Avos", status:"upcoming",
+    a:{name:"Holanda",      flag:F.NED},   b:{name:"Marrocos",      flag:F.MAR},
+    kickoff:brt("2026-06-29",22,0),  label:"29/Jun 22h00" },
+
+  // 30/Jun — Terça
+  { id:"d5", phase:"dezesseis", group:"Dezesseis Avos", status:"upcoming",
+    a:{name:"Costa do Marfim", flag:F.CIV}, b:{name:"Noruega",      flag:F.NOR},
+    kickoff:brt("2026-06-30",14,0),  label:"30/Jun 14h00" },
+
+  { id:"d6", phase:"dezesseis", group:"Dezesseis Avos", status:"upcoming",
+    a:{name:"França",       flag:ENG.FRA}, b:{name:"Suécia",        flag:F.SWE},
+    kickoff:brt("2026-06-30",18,0),  label:"30/Jun 18h00" },
+
+  { id:"d7", phase:"dezesseis", group:"Dezesseis Avos", status:"upcoming",
+    a:{name:"México",       flag:ENG.MEX}, b:{name:"Equador",       flag:F.ECU},
+    kickoff:brt("2026-06-30",22,0),  label:"30/Jun 22h00" },
+
+  // 01/Jul — Quarta
+  { id:"d8", phase:"dezesseis", group:"Dezesseis Avos", status:"upcoming",
+    a:{name:"Inglaterra",   flag:ENG.ING}, b:{name:"R.D. Congo",    flag:F.COD},
+    kickoff:brt("2026-07-01",13,0),  label:"01/Jul 13h00" },
+
+  { id:"d9", phase:"dezesseis", group:"Dezesseis Avos", status:"upcoming",
+    a:{name:"Bélgica",      flag:F.BEL},   b:{name:"Senegal",       flag:F.SEN},
+    kickoff:brt("2026-07-01",17,0),  label:"01/Jul 17h00" },
+
+  { id:"d10", phase:"dezesseis", group:"Dezesseis Avos", status:"upcoming",
+    a:{name:"EUA",          flag:ENG.USA}, b:{name:"Bósnia-Herz.",  flag:F.BIH},
+    kickoff:brt("2026-07-01",21,0),  label:"01/Jul 21h00" },
+
+  // 02/Jul — Quinta
+  { id:"d11", phase:"dezesseis", group:"Dezesseis Avos", status:"upcoming",
+    a:{name:"Espanha",      flag:ENG.ESP}, b:{name:"Áustria",       flag:F.AUT},
+    kickoff:brt("2026-07-02",16,0),  label:"02/Jul 16h00" },
+
+  { id:"d12", phase:"dezesseis", group:"Dezesseis Avos", status:"upcoming",
+    a:{name:"Portugal",     flag:ENG.POR}, b:{name:"Croácia",       flag:F.CRO},
+    kickoff:brt("2026-07-02",20,0),  label:"02/Jul 20h00" },
+
+  { id:"d13", phase:"dezesseis", group:"Dezesseis Avos", status:"upcoming",
+    a:{name:"Suíça",        flag:F.SUI},   b:{name:"Argélia",       flag:F.ALG},
+    kickoff:brt("2026-07-03",0,0),   label:"03/Jul 00h00" },
+
+  // 03/Jul — Sexta
+  { id:"d14", phase:"dezesseis", group:"Dezesseis Avos", status:"upcoming",
+    a:{name:"Austrália",    flag:F.AUS},   b:{name:"Egito",         flag:F.EGY},
+    kickoff:brt("2026-07-03",15,0),  label:"03/Jul 15h00" },
+
+  { id:"d15", phase:"dezesseis", group:"Dezesseis Avos", status:"upcoming",
+    a:{name:"Argentina",    flag:ENG.ARG}, b:{name:"Cabo Verde",    flag:F.CPV},
+    kickoff:brt("2026-07-03",19,0),  label:"03/Jul 19h00" },
+
+  { id:"d16", phase:"dezesseis", group:"Dezesseis Avos", status:"upcoming",
+    a:{name:"Colômbia",     flag:F.COL},   b:{name:"Gana",          flag:F.GHA},
+    kickoff:brt("2026-07-03",22,30), label:"03/Jul 22h30" },
 ];
 
 // ── Regras de pontuação ──────────────────────────────────────────
