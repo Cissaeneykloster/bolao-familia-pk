@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useBolao } from "@/lib/store";
-import { SCORING } from "@/lib/mock-data";
+import { SCORING, WINNER_PTS_BY_PHASE } from "@/lib/mock-data";
+import type { MatchPhase } from "@/lib/types";
 import { isMatchLocked } from "@/lib/standings";
 import type { Match } from "@/lib/types";
 
@@ -107,9 +108,11 @@ function Stepper({
   );
 }
 
-function Preview({ gA, gB }: { gA: number; gB: number }) {
-  const maxPts = SCORING.reduce((s, r) => s + r.pts, 0);
-  const winnerPts = SCORING.find((r) => r.key === "winner")!.pts;
+function Preview({ gA, gB, phase = "grupos" }: { gA: number; gB: number; phase?: MatchPhase }) {
+  const isElim = phase !== "grupos" && phase !== "amistoso";
+  const winnerBase = SCORING.find((r) => r.key === "winner")!.pts;
+  const winnerPts = isElim ? (WINNER_PTS_BY_PHASE[phase] ?? winnerBase) : winnerBase;
+  const maxPts = SCORING.reduce((s, r) => s + (r.key === "winner" ? winnerPts : r.pts), 0);
 
   return (
     <div style={{
@@ -240,7 +243,7 @@ export function PlacarInput({ match, onSaved }: PlacarInputProps) {
       </div>
 
       {/* Preview de pontos */}
-      {size !== "minimal" && <Preview gA={guess.a} gB={guess.b} />}
+      {size !== "minimal" && <Preview gA={guess.a} gB={guess.b} phase={match.phase} />}
 
       {/* Botão salvar */}
       <button
