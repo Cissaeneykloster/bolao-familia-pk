@@ -14,7 +14,7 @@ function MiniBreakdown({ match, guess }: { match: Match; guess: { a: number; b: 
   const lang = useLang();
   const t = T[lang];
   const actual = mScore(match, resultFix);
-  const bd = breakdown(actual, guess);
+  const bd = breakdown(actual, guess, match.phase);
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
       {bd.rows.map((r) => (
