@@ -27,9 +27,6 @@ function MiniBreakdown({ match, guess }: { match: Match; guess: { a: number; b: 
           {r.hit ? "✅" : "❌"} {t.breakdownLabels[r.key as keyof typeof t.breakdownLabels] ?? r.label}
         </span>
       ))}
-      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--neon)", marginLeft: 4 }}>
-        ⚡ +{bd.total} pts
-      </span>
     </div>
   );
 }
